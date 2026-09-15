@@ -146,6 +146,44 @@ h1 { text-align: center; font-size: 28px; color: #fff; margin-bottom: 4px; lette
 .stat-pending .num { color: #fbbf24; }
 .stat-pct .num { color: #5eead4; }
 
+/* ===== INDIVIDUAL PLAYER RECORDS ===== */
+.player-records-section {
+  margin-bottom: 24px;
+}
+.player-records-section h2 {
+  font-size: 18px; color: #fff; margin-bottom: 14px; text-align: center;
+}
+.player-records-grid {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 12px;
+}
+.player-record-card {
+  background: #1a2733; border-radius: 10px; padding: 16px;
+  border: 1px solid #243342;
+}
+.player-record-header {
+  display: flex; align-items: center; gap: 10px; margin-bottom: 10px;
+}
+.player-record-name {
+  color: #fff; font-size: 15px; font-weight: 600; flex: 1;
+}
+.player-record-pct {
+  font-size: 20px; font-weight: 800; font-family: monospace; color: #5eead4;
+}
+.player-record-stats {
+  display: flex; align-items: center; gap: 6px; margin-bottom: 10px;
+  font-size: 13px; font-weight: 600;
+}
+.pr-stat.pr-wins { color: #34d399; }
+.pr-stat.pr-losses { color: #f87171; }
+.pr-stat.pr-pending { color: #fbbf24; }
+.pr-divider { color: #4a5a6e; }
+.player-record-bar {
+  display: flex; height: 6px; border-radius: 3px; overflow: hidden;
+  background: #243342;
+}
+.bar-wins { background: #34d399; transition: width 0.3s ease; }
+.bar-losses { background: #f87171; transition: width 0.3s ease; }
+
 .history-week {
   background: #1a2733; border-radius: 12px; padding: 20px; margin-bottom: 16px;
   border: 1px solid #243342;
@@ -191,6 +229,7 @@ h1 { text-align: center; font-size: 28px; color: #fff; margin-bottom: 4px; lette
   .record-stats { gap: 16px; }
   .record-stat .num { font-size: 22px; }
   .tab-btn { padding: 8px 16px; font-size: 13px; }
+  .player-records-grid { grid-template-columns: 1fr; }
 }
 
 /* ===== ANIMATIONS ===== */
