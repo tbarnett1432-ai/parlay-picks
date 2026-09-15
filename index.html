@@ -16,6 +16,7 @@
   <div class="tab-bar">
     <button class="tab-btn active" data-tab="entry">✏️ Enter Picks</button>
     <button class="tab-btn" data-tab="summary">📋 Review Parlay</button>
+    <button class="tab-btn" data-tab="history">📊 History</button>
   </div>
 
   <!-- ENTRY TAB -->
@@ -36,7 +37,7 @@
   <!-- SUMMARY TAB -->
   <div id="summary-tab" class="tab-content">
     <div class="parlay-total">
-      <h2>9-Leg Parlay</h2>
+      <h2>12-Leg Parlay</h2>
       <div class="count" id="total-picks-count">0</div>
       <div class="label">Picks Submitted</div>
     </div>
@@ -49,6 +50,21 @@
       </svg>
       This updates live — when your friends enter picks, they appear here automatically!
     </div>
+  </div>
+
+  <!-- HISTORY TAB -->
+  <div id="history-tab" class="tab-content">
+
+    <div class="info-bar">
+      <svg class="info-icon" viewBox="0 0 24 24" fill="none" stroke="#7edcbe" stroke-width="2">
+        <circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/>
+      </svg>
+      Click on each pick to mark it as a Win ✅ or Loss ❌. Your record updates automatically!
+    </div>
+
+    <div id="overall-record" class="record-banner"></div>
+    <div id="history-container"></div>
+    <div id="no-history" class="no-history" style="display:none;">No past weeks yet — check back after this week!</div>
   </div>
 
   <!-- Firebase SDK -->
