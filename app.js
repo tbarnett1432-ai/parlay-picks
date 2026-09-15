@@ -20,6 +20,7 @@ const db = firebase.database();
 // CONSTANTS
 // ============================================================
 const NUM_PICKS = 2;
+const NUM_PLAYERS = 4;
 const PLAYER_COLORS = ['avatar-1', 'avatar-2', 'avatar-3', 'avatar-4'];
 const PLAYER_NAMES = ['Tristan', 'Josh', 'Scott', 'Cole'];
 const PICK_TYPES = ['Game Line', 'Spread', 'Over/Under', 'Moneyline', 'Player Prop'];
@@ -86,7 +87,7 @@ document.getElementById('week-header').textContent = getWeekDateRange();
 
 const playersContainer = document.getElementById('players-container');
 
-for (let p = 0; p < 4; p++) {
+for (let p = 0; p < NUM_PLAYERS; p++) {
   const section = document.createElement('div');
   section.className = 'player-section';
   section.id = `player-section-${p}`;
@@ -166,7 +167,7 @@ weekRef.on('value', (snapshot) => {
 
   let totalFilled = 0;
 
-  for (let p = 0; p < 4; p++) {
+  for (let p = 0; p < NUM_PLAYERS; p++) {
     const pData = players[p] || {};
     const section = document.getElementById(`player-section-${p}`);
 
@@ -207,7 +208,7 @@ function buildSummary(players) {
   const container = document.getElementById('summary-container');
   container.innerHTML = '';
 
-  for (let p = 0; p < 4; p++) {
+  for (let p = 0; p < NUM_PLAYERS; p++) {
     const pData = players[p] || {};
     const picks = pData.picks || {};
     const name = PLAYER_NAMES[p];
@@ -249,7 +250,7 @@ function buildSummary(players) {
 }
 
 // ============================================================
-// HISTORY TAB — Load All Weeks
+// HISTORY TAB — Load All Weeks (supports variable picks per week)
 // ============================================================
 const allWeeksRef = db.ref('weeks');
 
@@ -290,11 +291,19 @@ allWeeksRef.on('value', (snapshot) => {
     let weekPending = 0;
     let hasPicks = false;
 
-    for (let p = 0; p < 4; p++) {
+    // Loop through all players that exist in this week's data
+    const playerKeys = Object.keys(players);
+    for (let i = 0; i < playerKeys.length; i++) {
+      const p = playerKeys[i];
       const pData = players[p] || {};
       const picks = pData.picks || {};
+      const playerIndex = parseInt(p);
+      const playerName = PLAYER_NAMES[playerIndex] || `Player ${playerIndex + 1}`;
 
-      for (let k = 0; k < NUM_PICKS; k++) {
+      // Loop through ALL picks that exist for this player (not limited to NUM_PICKS)
+      const pickKeys = Object.keys(picks);
+      for (let j = 0; j < pickKeys.length; j++) {
+        const k = pickKeys[j];
         const pick = picks[k] || {};
         if (!pick.text || pick.text.trim() === '') continue;
 
@@ -313,7 +322,7 @@ allWeeksRef.on('value', (snapshot) => {
 
         rowsHTML += `
           <tr>
-            <td><strong>${PLAYER_NAMES[p]}</strong></td>
+            <td><strong>${playerName}</strong></td>
             <td><span class="badge ${badgeClass}">${type}</span></td>
             <td>${pick.text}</td>
             <td>
