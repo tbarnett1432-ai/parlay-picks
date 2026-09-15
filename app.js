@@ -17,7 +17,7 @@ firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
 
 // ============================================================
-// HELPERS
+// CONSTANTS
 // ============================================================
 const PLAYER_COLORS = ['avatar-1', 'avatar-2', 'avatar-3', 'avatar-4'];
 const PLAYER_NAMES = ['Tristan', 'Josh', 'Scott', 'Cole'];
@@ -29,6 +29,9 @@ const PLACEHOLDERS = [
   ['e.g. Lions -6.5 vs Vikings', 'e.g. Over 51.5 Bengals vs Jags', 'e.g. Tyreek Hill 90+ rec yds']
 ];
 
+// ============================================================
+// HELPERS
+// ============================================================
 function getWeekKey() {
   const now = new Date();
   const startOfYear = new Date(now.getFullYear(), 0, 1);
@@ -45,6 +48,21 @@ function getWeekDateRange() {
   sunday.setDate(monday.getDate() + 6);
   const opts = { month: 'short', day: 'numeric' };
   return `📅 Week of ${monday.toLocaleDateString('en-US', opts)} – ${sunday.toLocaleDateString('en-US', opts)}, ${now.getFullYear()}`;
+}
+
+function weekKeyToLabel(weekKey) {
+  // Convert "2026-W37" to a readable label
+  const parts = weekKey.split('-W');
+  const year = parseInt(parts[0]);
+  const week = parseInt(parts[1]);
+  // Approximate the Monday of that week
+  const jan1 = new Date(year, 0, 1);
+  const daysOffset = (week - 1) * 7 - jan1.getDay() + 1;
+  const monday = new Date(year, 0, 1 + daysOffset);
+  const sunday = new Date(monday);
+  sunday.setDate(monday.getDate() + 6);
+  const opts = { month: 'short', day: 'numeric' };
+  return `Week of ${monday.toLocaleDateString('en-US', opts)} – ${sunday.toLocaleDateString('en-US', opts)}, ${year}`;
 }
 
 // ============================================================
@@ -141,7 +159,7 @@ document.querySelectorAll('.lock-check').forEach(cb => {
 });
 
 // ============================================================
-// REAL-TIME LISTENER — Sync from Firebase
+// REAL-TIME LISTENER — Current Week (Entry + Summary)
 // ============================================================
 weekRef.on('value', (snapshot) => {
   const data = snapshot.val() || {};
@@ -230,4 +248,154 @@ function buildSummary(players) {
     container.appendChild(card);
   }
 }
+
+// ============================================================
+// HISTORY TAB — Load All Weeks
+// ============================================================
+const allWeeksRef = db.ref('weeks');
+
+allWeeksRef.on('value', (snapshot) => {
+  const allWeeks = snapshot.val() || {};
+  const weekKeys = Object.keys(allWeeks).sort().reverse(); // newest first
+
+  const historyContainer = document.getElementById('history-container');
+  const noHistory = document.getElementById('no-history');
+  const recordBanner = document.getElementById('overall-record');
+
+  historyContainer.innerHTML = '';
+
+  if (weekKeys.length === 0) {
+    noHistory.style.display = 'block';
+    recordBanner.style.display = 'none';
+    return;
+  }
+
+  noHistory.style.display = 'none';
+  recordBanner.style.display = 'block';
+
+  // Calculate overall record
+  let totalWins = 0;
+  let totalLosses = 0;
+  let totalPending = 0;
+
+  weekKeys.forEach(wk => {
+    const weekData = allWeeks[wk];
+    const players = weekData.players || {};
+    const results = weekData.results || {};
+
+    // Build week card
+    const weekDiv = document.createElement('div');
+    weekDiv.className = 'history-week';
+
+    let rowsHTML = '';
+    let weekWins = 0;
+    let weekLosses = 0;
+    let weekPending = 0;
+    let hasPicks = false;
+
+    for (let p = 0; p < 4; p++) {
+      const pData = players[p] || {};
+      const picks = pData.picks || {};
+
+      for (let k = 0; k < 3; k++) {
+        const pick = picks[k] || {};
+        if (!pick.text || pick.text.trim() === '') continue;
+
+        hasPicks = true;
+        const resultKey = `p${p}_k${k}`;
+        const result = results[resultKey] || 'pending';
+        const type = pick.type || 'Game Line';
+        const badgeClass = 'badge-' + type.toLowerCase().replace(/\//g, '-').replace(/\s+/g, '-');
+
+        if (result === 'win') { weekWins++; totalWins++; }
+        else if (result === 'loss') { weekLosses++; totalLosses++; }
+        else { weekPending++; totalPending++; }
+
+        const winClass = result === 'win' ? ' win' : '';
+        const lossClass = result === 'loss' ? ' loss' : '';
+
+        rowsHTML += `
+          <tr>
+            <td><strong>${PLAYER_NAMES[p]}</strong></td>
+            <td><span class="badge ${badgeClass}">${type}</span></td>
+            <td>${pick.text}</td>
+            <td>
+              <button class="result-btn${winClass}" data-week="${wk}" data-key="${resultKey}" data-action="win">✅ W</button>
+              <button class="result-btn${lossClass}" data-week="${wk}" data-key="${resultKey}" data-action="loss">❌ L</button>
+            </td>
+          </tr>`;
+      }
+    }
+
+    if (!hasPicks) return;
+
+    // Week result badge
+    let weekResultHTML = '';
+    if (weekPending > 0) {
+      weekResultHTML = `<span class="history-week-result result-pending">⏳ ${weekWins}W - ${weekLosses}L - ${weekPending} pending</span>`;
+    } else if (weekLosses === 0 && weekWins > 0) {
+      weekResultHTML = `<span class="history-week-result result-win">🎉 PERFECT ${weekWins}-${weekLosses}</span>`;
+    } else {
+      weekResultHTML = `<span class="history-week-result ${weekWins > weekLosses ? 'result-win' : 'result-loss'}">${weekWins}W - ${weekLosses}L</span>`;
+    }
+
+    weekDiv.innerHTML = `
+      <div class="history-week-header">
+        <h3>📅 ${weekKeyToLabel(wk)}</h3>
+        ${weekResultHTML}
+      </div>
+      <table class="history-table">
+        <thead><tr><th>Player</th><th>Type</th><th>Pick</th><th>Result</th></tr></thead>
+        <tbody>${rowsHTML}</tbody>
+      </table>`;
+
+    historyContainer.appendChild(weekDiv);
+  });
+
+  // Update overall record banner
+  const totalBets = totalWins + totalLosses;
+  const winPct = totalBets > 0 ? Math.round((totalWins / totalBets) * 100) : 0;
+
+  recordBanner.innerHTML = `
+    <h2>📊 Overall Record</h2>
+    <div class="record-stats">
+      <div class="record-stat stat-wins">
+        <div class="num">${totalWins}</div>
+        <div class="lbl">Wins</div>
+      </div>
+      <div class="record-stat stat-losses">
+        <div class="num">${totalLosses}</div>
+        <div class="lbl">Losses</div>
+      </div>
+      <div class="record-stat stat-pending">
+        <div class="num">${totalPending}</div>
+        <div class="lbl">Pending</div>
+      </div>
+      <div class="record-stat stat-pct">
+        <div class="num">${winPct}%</div>
+        <div class="lbl">Win Rate</div>
+      </div>
+    </div>`;
+
+  // Attach click handlers to result buttons
+  document.querySelectorAll('.result-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const week = btn.dataset.week;
+      const key = btn.dataset.key;
+      const action = btn.dataset.action;
+
+      const resultRef = db.ref(`weeks/${week}/results/${key}`);
+
+      // Toggle: if already set to this result, clear it back to pending
+      resultRef.once('value', (snap) => {
+        const current = snap.val();
+        if (current === action) {
+          resultRef.remove(); // toggle off → back to pending
+        } else {
+          resultRef.set(action); // set win or loss
+        }
+      });
+    });
+  });
+});
 
