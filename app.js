@@ -32,27 +32,62 @@ const PLACEHOLDERS = [
 ];
 
 // ============================================================
-// HELPERS
+// WEEK SYSTEM — Runs Tuesday to Monday (football schedule)
+// Season starts Tuesday Sep 8, 2026
 // ============================================================
-function getWeekKey() {
+const SEASON_START = new Date(2026, 8, 8); // Sep 8, 2026 (Tuesday)
+
+function getSeasonWeek() {
   const now = new Date();
-  const startOfYear = new Date(now.getFullYear(), 0, 1);
-  const weekNum = Math.ceil(((now - startOfYear) / 86400000 + startOfYear.getDay() + 1) / 7);
-  return `${now.getFullYear()}-W${String(weekNum).padStart(2, '0')}`;
+  const diffMs = now - SEASON_START;
+  const diffDays = Math.floor(diffMs / 86400000);
+  const weekNum = Math.floor(diffDays / 7) + 1;
+  if (weekNum < 1) return 1;
+  return weekNum;
+}
+
+function getWeekKey() {
+  const week = getSeasonWeek();
+  return `2026-FBW-${String(week).padStart(2, '0')}`;
+}
+
+function getWeekDates(weekNum) {
+  const startDate = new Date(SEASON_START);
+  startDate.setDate(startDate.getDate() + (weekNum - 1) * 7);
+  const endDate = new Date(startDate);
+  endDate.setDate(startDate.getDate() + 6);
+  return { startDate, endDate };
 }
 
 function getWeekDateRange() {
-  const now = new Date();
-  const day = now.getDay();
-  const monday = new Date(now);
-  monday.setDate(now.getDate() - (day === 0 ? 6 : day - 1));
-  const sunday = new Date(monday);
-  sunday.setDate(monday.getDate() + 6);
+  const week = getSeasonWeek();
+  const { startDate, endDate } = getWeekDates(week);
   const opts = { month: 'short', day: 'numeric' };
-  return `📅 Week of ${monday.toLocaleDateString('en-US', opts)} – ${sunday.toLocaleDateString('en-US', opts)}, ${now.getFullYear()}`;
+  return `🏈 Week ${week} — ${startDate.toLocaleDateString('en-US', opts)} – ${endDate.toLocaleDateString('en-US', opts)}, ${startDate.getFullYear()}`;
 }
 
 function weekKeyToLabel(weekKey) {
+  // Handle new football week format: "2026-FBW-02"
+  if (weekKey.includes('FBW')) {
+    const parts = weekKey.split('-FBW-');
+    const year = parseInt(parts[0]);
+    const week = parseInt(parts[1]);
+    const { startDate, endDate } = getWeekDates(week);
+    const opts = { month: 'short', day: 'numeric' };
+    return `Week ${week} — ${startDate.toLocaleDateString('en-US', opts)} – ${endDate.toLocaleDateString('en-US', opts)}, ${year}`;
+  }
+
+  // Handle old calendar week format: "2026-W37" or "2026-NFL-W01"
+  if (weekKey.includes('NFL')) {
+    const parts = weekKey.split('-NFL-W');
+    const year = parseInt(parts[0]);
+    const week = parseInt(parts[1]);
+    const { startDate, endDate } = getWeekDates(week);
+    const opts = { month: 'short', day: 'numeric' };
+    return `Week ${week} — ${startDate.toLocaleDateString('en-US', opts)} – ${endDate.toLocaleDateString('en-US', opts)}, ${year}`;
+  }
+
+  // Handle legacy calendar week format: "2026-W37"
   const parts = weekKey.split('-W');
   const year = parseInt(parts[0]);
   const week = parseInt(parts[1]);
@@ -280,7 +315,6 @@ allWeeksRef.on('value', (snapshot) => {
   let totalLosses = 0;
   let totalPending = 0;
 
-  // Track individual player records
   const playerStats = {};
   for (let p = 0; p < NUM_PLAYERS; p++) {
     playerStats[p] = { wins: 0, losses: 0, pending: 0 };
@@ -308,7 +342,6 @@ allWeeksRef.on('value', (snapshot) => {
       const playerIndex = parseInt(p);
       const playerName = PLAYER_NAMES[playerIndex] || `Player ${playerIndex + 1}`;
 
-      // Make sure player stats exist
       if (!playerStats[playerIndex]) {
         playerStats[playerIndex] = { wins: 0, losses: 0, pending: 0 };
       }
@@ -407,13 +440,6 @@ allWeeksRef.on('value', (snapshot) => {
     const stats = playerStats[p];
     const pTotal = stats.wins + stats.losses;
     const pPct = pTotal > 0 ? Math.round((stats.wins / pTotal) * 100) : 0;
-    const totalPicks = stats.wins + stats.losses + stats.pending;
-
-    // Determine best/worst styling
-    let rankClass = '';
-    if (totalPicks === 0) {
-      rankClass = '';
-    }
 
     playerCardsHTML += `
       <div class="player-record-card">
