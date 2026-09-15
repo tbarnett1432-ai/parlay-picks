@@ -19,14 +19,15 @@ const db = firebase.database();
 // ============================================================
 // CONSTANTS
 // ============================================================
+const NUM_PICKS = 2;
 const PLAYER_COLORS = ['avatar-1', 'avatar-2', 'avatar-3', 'avatar-4'];
 const PLAYER_NAMES = ['Tristan', 'Josh', 'Scott', 'Cole'];
 const PICK_TYPES = ['Game Line', 'Spread', 'Over/Under', 'Moneyline', 'Player Prop'];
 const PLACEHOLDERS = [
-  ['e.g. Chiefs -3.5 vs Ravens', 'e.g. Over 47.5 Bills vs Dolphins', 'e.g. Mahomes 275+ pass yds'],
-  ['e.g. 49ers ML vs Seahawks', 'e.g. Under 43.5 Steelers vs Browns', 'e.g. Derrick Henry 80+ rush yds'],
-  ['e.g. Cowboys +7 vs Eagles', 'e.g. Lamar Jackson 1+ rush TD', 'e.g. Packers ML vs Bears'],
-  ['e.g. Lions -6.5 vs Vikings', 'e.g. Over 51.5 Bengals vs Jags', 'e.g. Tyreek Hill 90+ rec yds']
+  ['e.g. Chiefs -3.5 vs Ravens', 'e.g. Mahomes 275+ pass yds'],
+  ['e.g. 49ers ML vs Seahawks', 'e.g. Derrick Henry 80+ rush yds'],
+  ['e.g. Cowboys +7 vs Eagles', 'e.g. Lamar Jackson 1+ rush TD'],
+  ['e.g. Lions -6.5 vs Vikings', 'e.g. Tyreek Hill 90+ rec yds']
 ];
 
 // ============================================================
@@ -51,11 +52,9 @@ function getWeekDateRange() {
 }
 
 function weekKeyToLabel(weekKey) {
-  // Convert "2026-W37" to a readable label
   const parts = weekKey.split('-W');
   const year = parseInt(parts[0]);
   const week = parseInt(parts[1]);
-  // Approximate the Monday of that week
   const jan1 = new Date(year, 0, 1);
   const daysOffset = (week - 1) * 7 - jan1.getDay() + 1;
   const monday = new Date(year, 0, 1 + daysOffset);
@@ -93,7 +92,7 @@ for (let p = 0; p < 4; p++) {
   section.id = `player-section-${p}`;
 
   let picksHTML = '';
-  for (let k = 0; k < 3; k++) {
+  for (let k = 0; k < NUM_PICKS; k++) {
     const optionsHTML = PICK_TYPES.map(t => `<option value="${t}">${t}</option>`).join('');
     picksHTML += `
       <div class="pick-row">
@@ -178,7 +177,7 @@ weekRef.on('value', (snapshot) => {
 
     // Picks
     const picks = pData.picks || {};
-    for (let k = 0; k < 3; k++) {
+    for (let k = 0; k < NUM_PICKS; k++) {
       const pickData = picks[k] || {};
       const typeSelect = section.querySelector(`.pick-type[data-pick="${k}"]`);
       const textInput = section.querySelector(`.pick-input[data-pick="${k}"]`);
@@ -215,7 +214,7 @@ function buildSummary(players) {
     const locked = pData.locked || false;
 
     let rowsHTML = '';
-    for (let k = 0; k < 3; k++) {
+    for (let k = 0; k < NUM_PICKS; k++) {
       const pick = picks[k] || {};
       const type = pick.type || 'Game Line';
       const text = pick.text || '—';
@@ -256,7 +255,7 @@ const allWeeksRef = db.ref('weeks');
 
 allWeeksRef.on('value', (snapshot) => {
   const allWeeks = snapshot.val() || {};
-  const weekKeys = Object.keys(allWeeks).sort().reverse(); // newest first
+  const weekKeys = Object.keys(allWeeks).sort().reverse();
 
   const historyContainer = document.getElementById('history-container');
   const noHistory = document.getElementById('no-history');
@@ -273,7 +272,6 @@ allWeeksRef.on('value', (snapshot) => {
   noHistory.style.display = 'none';
   recordBanner.style.display = 'block';
 
-  // Calculate overall record
   let totalWins = 0;
   let totalLosses = 0;
   let totalPending = 0;
@@ -283,7 +281,6 @@ allWeeksRef.on('value', (snapshot) => {
     const players = weekData.players || {};
     const results = weekData.results || {};
 
-    // Build week card
     const weekDiv = document.createElement('div');
     weekDiv.className = 'history-week';
 
@@ -297,7 +294,7 @@ allWeeksRef.on('value', (snapshot) => {
       const pData = players[p] || {};
       const picks = pData.picks || {};
 
-      for (let k = 0; k < 3; k++) {
+      for (let k = 0; k < NUM_PICKS; k++) {
         const pick = picks[k] || {};
         if (!pick.text || pick.text.trim() === '') continue;
 
@@ -329,7 +326,6 @@ allWeeksRef.on('value', (snapshot) => {
 
     if (!hasPicks) return;
 
-    // Week result badge
     let weekResultHTML = '';
     if (weekPending > 0) {
       weekResultHTML = `<span class="history-week-result result-pending">⏳ ${weekWins}W - ${weekLosses}L - ${weekPending} pending</span>`;
@@ -352,7 +348,6 @@ allWeeksRef.on('value', (snapshot) => {
     historyContainer.appendChild(weekDiv);
   });
 
-  // Update overall record banner
   const totalBets = totalWins + totalLosses;
   const winPct = totalBets > 0 ? Math.round((totalWins / totalBets) * 100) : 0;
 
@@ -377,7 +372,6 @@ allWeeksRef.on('value', (snapshot) => {
       </div>
     </div>`;
 
-  // Attach click handlers to result buttons
   document.querySelectorAll('.result-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       const week = btn.dataset.week;
@@ -386,13 +380,12 @@ allWeeksRef.on('value', (snapshot) => {
 
       const resultRef = db.ref(`weeks/${week}/results/${key}`);
 
-      // Toggle: if already set to this result, clear it back to pending
       resultRef.once('value', (snap) => {
         const current = snap.val();
         if (current === action) {
-          resultRef.remove(); // toggle off → back to pending
+          resultRef.remove();
         } else {
-          resultRef.set(action); // set win or loss
+          resultRef.set(action);
         }
       });
     });
