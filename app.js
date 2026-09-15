@@ -250,7 +250,7 @@ function buildSummary(players) {
 }
 
 // ============================================================
-// HISTORY TAB — Load All Weeks (supports variable picks per week)
+// HISTORY TAB — Load All Weeks
 // ============================================================
 const allWeeksRef = db.ref('weeks');
 
@@ -261,21 +261,30 @@ allWeeksRef.on('value', (snapshot) => {
   const historyContainer = document.getElementById('history-container');
   const noHistory = document.getElementById('no-history');
   const recordBanner = document.getElementById('overall-record');
+  const playerRecordsContainer = document.getElementById('player-records');
 
   historyContainer.innerHTML = '';
 
   if (weekKeys.length === 0) {
     noHistory.style.display = 'block';
     recordBanner.style.display = 'none';
+    playerRecordsContainer.style.display = 'none';
     return;
   }
 
   noHistory.style.display = 'none';
   recordBanner.style.display = 'block';
+  playerRecordsContainer.style.display = 'block';
 
   let totalWins = 0;
   let totalLosses = 0;
   let totalPending = 0;
+
+  // Track individual player records
+  const playerStats = {};
+  for (let p = 0; p < NUM_PLAYERS; p++) {
+    playerStats[p] = { wins: 0, losses: 0, pending: 0 };
+  }
 
   weekKeys.forEach(wk => {
     const weekData = allWeeks[wk];
@@ -291,7 +300,6 @@ allWeeksRef.on('value', (snapshot) => {
     let weekPending = 0;
     let hasPicks = false;
 
-    // Loop through all players that exist in this week's data
     const playerKeys = Object.keys(players);
     for (let i = 0; i < playerKeys.length; i++) {
       const p = playerKeys[i];
@@ -300,7 +308,11 @@ allWeeksRef.on('value', (snapshot) => {
       const playerIndex = parseInt(p);
       const playerName = PLAYER_NAMES[playerIndex] || `Player ${playerIndex + 1}`;
 
-      // Loop through ALL picks that exist for this player (not limited to NUM_PICKS)
+      // Make sure player stats exist
+      if (!playerStats[playerIndex]) {
+        playerStats[playerIndex] = { wins: 0, losses: 0, pending: 0 };
+      }
+
       const pickKeys = Object.keys(picks);
       for (let j = 0; j < pickKeys.length; j++) {
         const k = pickKeys[j];
@@ -313,9 +325,16 @@ allWeeksRef.on('value', (snapshot) => {
         const type = pick.type || 'Game Line';
         const badgeClass = 'badge-' + type.toLowerCase().replace(/\//g, '-').replace(/\s+/g, '-');
 
-        if (result === 'win') { weekWins++; totalWins++; }
-        else if (result === 'loss') { weekLosses++; totalLosses++; }
-        else { weekPending++; totalPending++; }
+        if (result === 'win') {
+          weekWins++; totalWins++;
+          playerStats[playerIndex].wins++;
+        } else if (result === 'loss') {
+          weekLosses++; totalLosses++;
+          playerStats[playerIndex].losses++;
+        } else {
+          weekPending++; totalPending++;
+          playerStats[playerIndex].pending++;
+        }
 
         const winClass = result === 'win' ? ' win' : '';
         const lossClass = result === 'loss' ? ' loss' : '';
@@ -357,6 +376,7 @@ allWeeksRef.on('value', (snapshot) => {
     historyContainer.appendChild(weekDiv);
   });
 
+  // Overall record banner
   const totalBets = totalWins + totalLosses;
   const winPct = totalBets > 0 ? Math.round((totalWins / totalBets) * 100) : 0;
 
@@ -381,6 +401,45 @@ allWeeksRef.on('value', (snapshot) => {
       </div>
     </div>`;
 
+  // Individual player records
+  let playerCardsHTML = '';
+  for (let p = 0; p < NUM_PLAYERS; p++) {
+    const stats = playerStats[p];
+    const pTotal = stats.wins + stats.losses;
+    const pPct = pTotal > 0 ? Math.round((stats.wins / pTotal) * 100) : 0;
+    const totalPicks = stats.wins + stats.losses + stats.pending;
+
+    // Determine best/worst styling
+    let rankClass = '';
+    if (totalPicks === 0) {
+      rankClass = '';
+    }
+
+    playerCardsHTML += `
+      <div class="player-record-card">
+        <div class="player-record-header">
+          <span class="player-avatar ${PLAYER_COLORS[p]}" style="width:32px;height:32px;font-size:13px;display:inline-flex;align-items:center;justify-content:center;border-radius:50%;color:#fff;">${p + 1}</span>
+          <span class="player-record-name">${PLAYER_NAMES[p]}</span>
+          <span class="player-record-pct">${pPct}%</span>
+        </div>
+        <div class="player-record-stats">
+          <span class="pr-stat pr-wins">${stats.wins}W</span>
+          <span class="pr-divider">-</span>
+          <span class="pr-stat pr-losses">${stats.losses}L</span>
+          ${stats.pending > 0 ? `<span class="pr-divider">-</span><span class="pr-stat pr-pending">${stats.pending}P</span>` : ''}
+        </div>
+        <div class="player-record-bar">
+          <div class="bar-wins" style="width: ${pTotal > 0 ? (stats.wins / pTotal) * 100 : 0}%"></div>
+          <div class="bar-losses" style="width: ${pTotal > 0 ? (stats.losses / pTotal) * 100 : 0}%"></div>
+        </div>
+      </div>`;
+  }
+
+  playerRecordsContainer.innerHTML = `
+    <h2>👤 Individual Records</h2>
+    <div class="player-records-grid">${playerCardsHTML}</div>`;
+
+  // Attach click handlers to result buttons
   document.querySelectorAll('.result-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       const week = btn.dataset.week;
