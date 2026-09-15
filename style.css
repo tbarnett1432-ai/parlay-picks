@@ -48,6 +48,7 @@ h1 { text-align: center; font-size: 28px; color: #fff; margin-bottom: 4px; lette
 }
 .player-section:nth-child(2) { animation-delay: 0.08s; }
 .player-section:nth-child(3) { animation-delay: 0.16s; }
+.player-section:nth-child(4) { animation-delay: 0.24s; }
 
 .player-section.locked { border-color: #28a87d; box-shadow: 0 0 0 1px #28a87d44; }
 
@@ -59,14 +60,11 @@ h1 { text-align: center; font-size: 28px; color: #fff; margin-bottom: 4px; lette
 .avatar-1 { background: #2563eb; }
 .avatar-2 { background: #9333ea; }
 .avatar-3 { background: #ea580c; }
+.avatar-4 { background: #0891b2; }
 
-.player-name-input {
-  background: transparent; border: none; border-bottom: 2px solid #334155;
-  color: #fff; font-size: 18px; font-weight: 600; padding: 4px 0; width: 200px;
-  outline: none; transition: border-color 0.2s; font-family: inherit;
+.player-name {
+  color: #fff; font-size: 18px; font-weight: 600;
 }
-.player-name-input:focus { border-color: #28a87d; }
-.player-name-input::placeholder { color: #4a5a6e; }
 
 /* ===== PICKS ===== */
 .picks-grid { display: flex; flex-direction: column; gap: 10px; }
@@ -137,7 +135,6 @@ h1 { text-align: center; font-size: 28px; color: #fff; margin-bottom: 4px; lette
   .pick-row { flex-wrap: wrap; }
   .pick-type { width: 100%; }
   body { padding: 12px; }
-  .player-name-input { width: 150px; }
 }
 
 /* ===== ANIMATIONS ===== */
