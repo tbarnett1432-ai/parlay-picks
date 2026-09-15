@@ -19,12 +19,14 @@ const db = firebase.database();
 // ============================================================
 // HELPERS
 // ============================================================
-const PLAYER_COLORS = ['avatar-1', 'avatar-2', 'avatar-3'];
+const PLAYER_COLORS = ['avatar-1', 'avatar-2', 'avatar-3', 'avatar-4'];
+const PLAYER_NAMES = ['Tristan', 'Josh', 'Scott', 'Cole'];
 const PICK_TYPES = ['Game Line', 'Spread', 'Over/Under', 'Moneyline', 'Player Prop'];
 const PLACEHOLDERS = [
   ['e.g. Chiefs -3.5 vs Ravens', 'e.g. Over 47.5 Bills vs Dolphins', 'e.g. Mahomes 275+ pass yds'],
   ['e.g. 49ers ML vs Seahawks', 'e.g. Under 43.5 Steelers vs Browns', 'e.g. Derrick Henry 80+ rush yds'],
-  ['e.g. Cowboys +7 vs Eagles', 'e.g. Lamar Jackson 1+ rush TD', 'e.g. Packers ML vs Bears']
+  ['e.g. Cowboys +7 vs Eagles', 'e.g. Lamar Jackson 1+ rush TD', 'e.g. Packers ML vs Bears'],
+  ['e.g. Lions -6.5 vs Vikings', 'e.g. Over 51.5 Bengals vs Jags', 'e.g. Tyreek Hill 90+ rec yds']
 ];
 
 function getWeekKey() {
@@ -67,7 +69,7 @@ document.getElementById('week-header').textContent = getWeekDateRange();
 
 const playersContainer = document.getElementById('players-container');
 
-for (let p = 0; p < 3; p++) {
+for (let p = 0; p < 4; p++) {
   const section = document.createElement('div');
   section.className = 'player-section';
   section.id = `player-section-${p}`;
@@ -89,8 +91,7 @@ for (let p = 0; p < 3; p++) {
   section.innerHTML = `
     <div class="player-header">
       <div class="player-avatar ${PLAYER_COLORS[p]}">${p + 1}</div>
-      <input type="text" class="player-name-input" data-player="${p}"
-             placeholder="Player ${p + 1} Name">
+      <div class="player-name">${PLAYER_NAMES[p]}</div>
     </div>
     <div class="picks-grid">${picksHTML}</div>
     <div class="lock-row">
@@ -112,14 +113,6 @@ function debounceSave(key, value, delay = 500) {
     weekRef.child(key).set(value);
   }, delay);
 }
-
-// Name inputs
-document.querySelectorAll('.player-name-input').forEach(input => {
-  input.addEventListener('input', () => {
-    const p = input.dataset.player;
-    debounceSave(`players/${p}/name`, input.value);
-  });
-});
 
 // Pick type selects
 document.querySelectorAll('.pick-type').forEach(select => {
@@ -156,15 +149,9 @@ weekRef.on('value', (snapshot) => {
 
   let totalFilled = 0;
 
-  for (let p = 0; p < 3; p++) {
+  for (let p = 0; p < 4; p++) {
     const pData = players[p] || {};
     const section = document.getElementById(`player-section-${p}`);
-
-    // Name
-    const nameInput = section.querySelector('.player-name-input');
-    if (document.activeElement !== nameInput) {
-      nameInput.value = pData.name || '';
-    }
 
     // Locked
     const lockCb = section.querySelector('.lock-check');
@@ -203,10 +190,10 @@ function buildSummary(players) {
   const container = document.getElementById('summary-container');
   container.innerHTML = '';
 
-  for (let p = 0; p < 3; p++) {
+  for (let p = 0; p < 4; p++) {
     const pData = players[p] || {};
     const picks = pData.picks || {};
-    const name = pData.name || `Player ${p + 1}`;
+    const name = PLAYER_NAMES[p];
     const locked = pData.locked || false;
 
     let rowsHTML = '';
