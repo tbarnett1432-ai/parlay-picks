@@ -23,14 +23,14 @@
   <div id="entry-tab" class="tab-content active">
 
     <div class="info-bar">
-  <svg class="info-icon" viewBox="0 0 24 24" fill="none" stroke="#7edcbe" stroke-width="2">
-    <circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/>
-  </svg>
-  <div>
-    Each person enters their 2 picks below. Check "Locked In" when done! All changes sync in real time.
-    <br>⚠️ Please lock in picks 30 minutes before kick off on Thursdays.
-  </div>
-</div>
+      <svg class="info-icon" viewBox="0 0 24 24" fill="none" stroke="#7edcbe" stroke-width="2">
+        <circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/>
+      </svg>
+      <div>
+        Each person enters their 2 picks below. Check "Locked In" when done! All changes sync in real time.
+        <br>⚠️ Please lock in picks 30 minutes before kick off on Thursdays.
+      </div>
+    </div>
 
     <div class="week-header" id="week-header"></div>
 
@@ -43,6 +43,35 @@
       <h2>8-Leg Parlay</h2>
       <div class="count" id="total-picks-count">0</div>
       <div class="label">Picks Submitted</div>
+    </div>
+
+    <!-- BET CALCULATOR -->
+    <div class="bet-calculator">
+      <h3>💰 Bet Slip</h3>
+      <div class="bet-fields">
+        <div class="bet-field">
+          <label for="parlay-odds">Parlay Odds</label>
+          <div class="input-wrapper">
+            <span class="input-prefix">+</span>
+            <input type="number" id="parlay-odds" placeholder="e.g. 2500" class="bet-input">
+          </div>
+        </div>
+        <div class="bet-field">
+          <label for="bet-amount">Bet Amount</label>
+          <div class="input-wrapper">
+            <span class="input-prefix">$</span>
+            <input type="number" id="bet-amount" placeholder="e.g. 10" class="bet-input">
+          </div>
+        </div>
+        <div class="bet-field">
+          <label for="win-amount">To Win</label>
+          <div class="input-wrapper">
+            <span class="input-prefix">$</span>
+            <input type="number" id="win-amount" placeholder="e.g. 250" class="bet-input">
+          </div>
+        </div>
+      </div>
+      <div class="bet-payout" id="bet-payout"></div>
     </div>
 
     <div id="summary-container" style="margin-top: 24px;"></div>
