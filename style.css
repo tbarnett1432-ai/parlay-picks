@@ -224,6 +224,23 @@ h1 { text-align: center; font-size: 28px; color: #fff; margin-bottom: 4px; lette
 .bar-wins { background: #34d399; transition: width 0.3s ease; }
 .bar-losses { background: #f87171; transition: width 0.3s ease; }
 
+/* ===== HISTORY BET SLIP ===== */
+.history-bet-slip {
+  display: flex; justify-content: space-around; align-items: center;
+  background: #0f1923; border-radius: 8px; padding: 12px 16px;
+  margin-bottom: 14px; border: 1px solid #1e2d3d;
+}
+.bet-slip-item { text-align: center; }
+.bet-slip-label {
+  display: block; font-size: 10px; text-transform: uppercase;
+  letter-spacing: 0.05em; color: #7a8a9e; margin-bottom: 4px; font-weight: 600;
+}
+.bet-slip-value {
+  font-size: 15px; font-weight: 700; color: #e0e0e0; font-family: monospace;
+}
+.bet-slip-win { color: #fbbf24; }
+.bet-slip-payout { color: #5eead4; }
+
 .history-week {
   background: #1a2733; border-radius: 12px; padding: 20px; margin-bottom: 16px;
   border: 1px solid #243342;
@@ -271,6 +288,7 @@ h1 { text-align: center; font-size: 28px; color: #fff; margin-bottom: 4px; lette
   .tab-btn { padding: 8px 16px; font-size: 13px; }
   .player-records-grid { grid-template-columns: 1fr; }
   .bet-fields { grid-template-columns: 1fr; }
+  .history-bet-slip { flex-wrap: wrap; gap: 12px; }
 }
 
 /* ===== ANIMATIONS ===== */
