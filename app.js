@@ -486,3 +486,55 @@ allWeeksRef.on('value', (snapshot) => {
   });
 });
 
+
+// ============================================================
+// BET SLIP — Save & Calculate
+// ============================================================
+const betOddsInput = document.getElementById('parlay-odds');
+const betAmountInput = document.getElementById('bet-amount');
+const winAmountInput = document.getElementById('win-amount');
+const betPayout = document.getElementById('bet-payout');
+
+function updatePayout() {
+  const odds = parseFloat(betOddsInput.value);
+  const betAmt = parseFloat(betAmountInput.value);
+  const winAmt = parseFloat(winAmountInput.value);
+
+  if (odds && betAmt && winAmt) {
+    const totalPayout = betAmt + winAmt;
+    betPayout.textContent = `💵 Total Payout: $${totalPayout.toFixed(2)}`;
+  } else if (odds && betAmt && !winAmt) {
+    // Auto-calculate win amount from American odds
+    let calcWin = 0;
+    if (odds > 0) {
+      calcWin = betAmt * (odds / 100);
+    } else {
+      calcWin = betAmt * (100 / Math.abs(odds));
+    }
+    betPayout.textContent = `💵 Estimated Win: $${calcWin.toFixed(2)} | Total Payout: $${(betAmt + calcWin).toFixed(2)}`;
+  } else {
+    betPayout.textContent = '';
+  }
+}
+
+function saveBetSlip() {
+  weekRef.child('betSlip').set({
+    odds: betOddsInput.value || '',
+    betAmount: betAmountInput.value || '',
+    winAmount: winAmountInput.value || ''
+  });
+}
+
+betOddsInput.addEventListener('input', () => { updatePayout(); saveBetSlip(); });
+betAmountInput.addEventListener('input', () => { updatePayout(); saveBetSlip(); });
+winAmountInput.addEventListener('input', () => { updatePayout(); saveBetSlip(); });
+
+// Load saved bet slip data
+weekRef.child('betSlip').on('value', (snapshot) => {
+  const data = snapshot.val() || {};
+  if (document.activeElement !== betOddsInput) betOddsInput.value = data.odds || '';
+  if (document.activeElement !== betAmountInput) betAmountInput.value = data.betAmount || '';
+  if (document.activeElement !== winAmountInput) winAmountInput.value = data.winAmount || '';
+  updatePayout();
+});
+
