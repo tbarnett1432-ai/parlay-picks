@@ -105,6 +105,46 @@ h1 { text-align: center; font-size: 28px; color: #fff; margin-bottom: 4px; lette
 .parlay-total .count { font-size: 42px; font-weight: 800; color: #5eead4; font-family: monospace; }
 .parlay-total .label { color: #7edcbe; font-size: 13px; margin-top: 4px; }
 
+/* ===== BET CALCULATOR ===== */
+.bet-calculator {
+  background: #1a2733; border-radius: 12px; padding: 20px; margin-top: 20px;
+  border: 1px solid #243342;
+}
+.bet-calculator h3 {
+  font-size: 16px; color: #fff; margin-bottom: 16px; text-align: center;
+}
+.bet-fields {
+  display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px;
+}
+.bet-field label {
+  display: block; font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em;
+  color: #7a8a9e; margin-bottom: 6px; font-weight: 600;
+}
+.input-wrapper {
+  display: flex; align-items: center; background: #0f1923;
+  border: 1px solid #334155; border-radius: 8px; overflow: hidden;
+  transition: border-color 0.2s;
+}
+.input-wrapper:focus-within { border-color: #28a87d; }
+.input-prefix {
+  padding: 10px 0 10px 12px; color: #7a8a9e; font-size: 14px; font-weight: 600;
+  pointer-events: none;
+}
+.bet-input {
+  flex: 1; background: transparent; border: none; color: #e0e0e0;
+  padding: 10px 12px 10px 4px; font-size: 14px; outline: none;
+  font-family: inherit; width: 100%;
+  -moz-appearance: textfield;
+}
+.bet-input::-webkit-outer-spin-button,
+.bet-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+.bet-input::placeholder { color: #4a5a6e; }
+
+.bet-payout {
+  margin-top: 14px; text-align: center; font-size: 14px; font-weight: 600;
+  color: #5eead4; min-height: 20px;
+}
+
 .summary-card {
   background: #1a2733; border-radius: 12px; padding: 20px; margin-bottom: 16px;
   border: 1px solid #243342;
@@ -230,6 +270,7 @@ h1 { text-align: center; font-size: 28px; color: #fff; margin-bottom: 4px; lette
   .record-stat .num { font-size: 22px; }
   .tab-btn { padding: 8px 16px; font-size: 13px; }
   .player-records-grid { grid-template-columns: 1fr; }
+  .bet-fields { grid-template-columns: 1fr; }
 }
 
 /* ===== ANIMATIONS ===== */
