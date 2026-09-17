@@ -67,7 +67,6 @@ function getWeekDateRange() {
 }
 
 function weekKeyToLabel(weekKey) {
-  // Handle new football week format: "2026-FBW-02"
   if (weekKey.includes('FBW')) {
     const parts = weekKey.split('-FBW-');
     const year = parseInt(parts[0]);
@@ -77,7 +76,6 @@ function weekKeyToLabel(weekKey) {
     return `Week ${week} — ${startDate.toLocaleDateString('en-US', opts)} – ${endDate.toLocaleDateString('en-US', opts)}, ${year}`;
   }
 
-  // Handle old calendar week format: "2026-W37" or "2026-NFL-W01"
   if (weekKey.includes('NFL')) {
     const parts = weekKey.split('-NFL-W');
     const year = parseInt(parts[0]);
@@ -87,7 +85,6 @@ function weekKeyToLabel(weekKey) {
     return `Week ${week} — ${startDate.toLocaleDateString('en-US', opts)} – ${endDate.toLocaleDateString('en-US', opts)}, ${year}`;
   }
 
-  // Handle legacy calendar week format: "2026-W37"
   const parts = weekKey.split('-W');
   const year = parseInt(parts[0]);
   const week = parseInt(parts[1]);
@@ -167,7 +164,6 @@ function debounceSave(key, value, delay = 500) {
   }, delay);
 }
 
-// Pick type selects
 document.querySelectorAll('.pick-type').forEach(select => {
   select.addEventListener('change', () => {
     const p = select.dataset.player;
@@ -176,7 +172,6 @@ document.querySelectorAll('.pick-type').forEach(select => {
   });
 });
 
-// Pick text inputs
 document.querySelectorAll('.pick-input').forEach(input => {
   input.addEventListener('input', () => {
     const p = input.dataset.player;
@@ -185,7 +180,6 @@ document.querySelectorAll('.pick-input').forEach(input => {
   });
 });
 
-// Lock checkboxes
 document.querySelectorAll('.lock-check').forEach(cb => {
   cb.addEventListener('change', () => {
     const p = cb.dataset.player;
@@ -206,12 +200,10 @@ weekRef.on('value', (snapshot) => {
     const pData = players[p] || {};
     const section = document.getElementById(`player-section-${p}`);
 
-    // Locked
     const lockCb = section.querySelector('.lock-check');
     lockCb.checked = pData.locked || false;
     section.classList.toggle('locked', pData.locked || false);
 
-    // Picks
     const picks = pData.picks || {};
     for (let k = 0; k < NUM_PICKS; k++) {
       const pickData = picks[k] || {};
@@ -231,7 +223,6 @@ weekRef.on('value', (snapshot) => {
     }
   }
 
-  // Update summary
   document.getElementById('total-picks-count').textContent = totalFilled;
   buildSummary(players);
 });
@@ -285,6 +276,55 @@ function buildSummary(players) {
 }
 
 // ============================================================
+// BET SLIP — Save & Calculate
+// ============================================================
+const betOddsInput = document.getElementById('parlay-odds');
+const betAmountInput = document.getElementById('bet-amount');
+const winAmountInput = document.getElementById('win-amount');
+const betPayout = document.getElementById('bet-payout');
+
+function updatePayout() {
+  const odds = parseFloat(betOddsInput.value);
+  const betAmt = parseFloat(betAmountInput.value);
+  const winAmt = parseFloat(winAmountInput.value);
+
+  if (odds && betAmt && winAmt) {
+    const totalPayout = betAmt + winAmt;
+    betPayout.textContent = `💵 Total Payout: $${totalPayout.toFixed(2)}`;
+  } else if (odds && betAmt && !winAmt) {
+    let calcWin = 0;
+    if (odds > 0) {
+      calcWin = betAmt * (odds / 100);
+    } else {
+      calcWin = betAmt * (100 / Math.abs(odds));
+    }
+    betPayout.textContent = `💵 Estimated Win: $${calcWin.toFixed(2)} | Total Payout: $${(betAmt + calcWin).toFixed(2)}`;
+  } else {
+    betPayout.textContent = '';
+  }
+}
+
+function saveBetSlip() {
+  weekRef.child('betSlip').set({
+    odds: betOddsInput.value || '',
+    betAmount: betAmountInput.value || '',
+    winAmount: winAmountInput.value || ''
+  });
+}
+
+betOddsInput.addEventListener('input', () => { updatePayout(); saveBetSlip(); });
+betAmountInput.addEventListener('input', () => { updatePayout(); saveBetSlip(); });
+winAmountInput.addEventListener('input', () => { updatePayout(); saveBetSlip(); });
+
+weekRef.child('betSlip').on('value', (snapshot) => {
+  const data = snapshot.val() || {};
+  if (document.activeElement !== betOddsInput) betOddsInput.value = data.odds || '';
+  if (document.activeElement !== betAmountInput) betAmountInput.value = data.betAmount || '';
+  if (document.activeElement !== winAmountInput) winAmountInput.value = data.winAmount || '';
+  updatePayout();
+});
+
+// ============================================================
 // HISTORY TAB — Load All Weeks
 // ============================================================
 const allWeeksRef = db.ref('weeks');
@@ -324,6 +364,7 @@ allWeeksRef.on('value', (snapshot) => {
     const weekData = allWeeks[wk];
     const players = weekData.players || {};
     const results = weekData.results || {};
+    const betSlip = weekData.betSlip || {};
 
     const weekDiv = document.createElement('div');
     weekDiv.className = 'history-week';
@@ -387,6 +428,7 @@ allWeeksRef.on('value', (snapshot) => {
 
     if (!hasPicks) return;
 
+    // Week result badge
     let weekResultHTML = '';
     if (weekPending > 0) {
       weekResultHTML = `<span class="history-week-result result-pending">⏳ ${weekWins}W - ${weekLosses}L - ${weekPending} pending</span>`;
@@ -396,11 +438,43 @@ allWeeksRef.on('value', (snapshot) => {
       weekResultHTML = `<span class="history-week-result ${weekWins > weekLosses ? 'result-win' : 'result-loss'}">${weekWins}W - ${weekLosses}L</span>`;
     }
 
+    // Bet slip info for this week
+    let betSlipHTML = '';
+    if (betSlip.odds || betSlip.betAmount || betSlip.winAmount) {
+      const odds = betSlip.odds ? `+${betSlip.odds}` : '—';
+      const betAmt = betSlip.betAmount ? `$${parseFloat(betSlip.betAmount).toFixed(2)}` : '—';
+      const winAmt = betSlip.winAmount ? `$${parseFloat(betSlip.winAmount).toFixed(2)}` : '—';
+      const totalPayout = (betSlip.betAmount && betSlip.winAmount)
+        ? `$${(parseFloat(betSlip.betAmount) + parseFloat(betSlip.winAmount)).toFixed(2)}`
+        : '—';
+
+      betSlipHTML = `
+        <div class="history-bet-slip">
+          <div class="bet-slip-item">
+            <span class="bet-slip-label">Odds</span>
+            <span class="bet-slip-value">${odds}</span>
+          </div>
+          <div class="bet-slip-item">
+            <span class="bet-slip-label">Wager</span>
+            <span class="bet-slip-value">${betAmt}</span>
+          </div>
+          <div class="bet-slip-item">
+            <span class="bet-slip-label">To Win</span>
+            <span class="bet-slip-value bet-slip-win">${winAmt}</span>
+          </div>
+          <div class="bet-slip-item">
+            <span class="bet-slip-label">Payout</span>
+            <span class="bet-slip-value bet-slip-payout">${totalPayout}</span>
+          </div>
+        </div>`;
+    }
+
     weekDiv.innerHTML = `
       <div class="history-week-header">
         <h3>📅 ${weekKeyToLabel(wk)}</h3>
         ${weekResultHTML}
       </div>
+      ${betSlipHTML}
       <table class="history-table">
         <thead><tr><th>Player</th><th>Type</th><th>Pick</th><th>Result</th></tr></thead>
         <tbody>${rowsHTML}</tbody>
@@ -484,57 +558,5 @@ allWeeksRef.on('value', (snapshot) => {
       });
     });
   });
-});
-
-
-// ============================================================
-// BET SLIP — Save & Calculate
-// ============================================================
-const betOddsInput = document.getElementById('parlay-odds');
-const betAmountInput = document.getElementById('bet-amount');
-const winAmountInput = document.getElementById('win-amount');
-const betPayout = document.getElementById('bet-payout');
-
-function updatePayout() {
-  const odds = parseFloat(betOddsInput.value);
-  const betAmt = parseFloat(betAmountInput.value);
-  const winAmt = parseFloat(winAmountInput.value);
-
-  if (odds && betAmt && winAmt) {
-    const totalPayout = betAmt + winAmt;
-    betPayout.textContent = `💵 Total Payout: $${totalPayout.toFixed(2)}`;
-  } else if (odds && betAmt && !winAmt) {
-    // Auto-calculate win amount from American odds
-    let calcWin = 0;
-    if (odds > 0) {
-      calcWin = betAmt * (odds / 100);
-    } else {
-      calcWin = betAmt * (100 / Math.abs(odds));
-    }
-    betPayout.textContent = `💵 Estimated Win: $${calcWin.toFixed(2)} | Total Payout: $${(betAmt + calcWin).toFixed(2)}`;
-  } else {
-    betPayout.textContent = '';
-  }
-}
-
-function saveBetSlip() {
-  weekRef.child('betSlip').set({
-    odds: betOddsInput.value || '',
-    betAmount: betAmountInput.value || '',
-    winAmount: winAmountInput.value || ''
-  });
-}
-
-betOddsInput.addEventListener('input', () => { updatePayout(); saveBetSlip(); });
-betAmountInput.addEventListener('input', () => { updatePayout(); saveBetSlip(); });
-winAmountInput.addEventListener('input', () => { updatePayout(); saveBetSlip(); });
-
-// Load saved bet slip data
-weekRef.child('betSlip').on('value', (snapshot) => {
-  const data = snapshot.val() || {};
-  if (document.activeElement !== betOddsInput) betOddsInput.value = data.odds || '';
-  if (document.activeElement !== betAmountInput) betAmountInput.value = data.betAmount || '';
-  if (document.activeElement !== winAmountInput) winAmountInput.value = data.winAmount || '';
-  updatePayout();
 });
 
