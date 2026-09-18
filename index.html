@@ -34,16 +34,15 @@
 
     <div class="week-header" id="week-header"></div>
 
-    <div id="players-container"></div>
-  </div>
-
-  <!-- SUMMARY TAB -->
-  <div id="summary-tab" class="tab-content">
-    <div class="parlay-total">
-      <h2>8-Leg Parlay</h2>
-      <div class="count" id="total-picks-count">0</div>
-      <div class="label">Picks Submitted</div>
+    <!-- Parlay Navigation -->
+    <div class="parlay-nav" id="parlay-nav">
+      <button class="parlay-nav-btn" id="prev-parlay" disabled>◀</button>
+      <span class="parlay-label" id="parlay-label">Parlay A</span>
+      <button class="parlay-nav-btn" id="next-parlay" disabled>▶</button>
+      <button class="add-parlay-btn" id="add-parlay">+ New Parlay</button>
     </div>
+
+    <div id="players-container"></div>
 
     <!-- BET CALCULATOR -->
     <div class="bet-calculator">
@@ -73,6 +72,15 @@
       </div>
       <div class="bet-payout" id="bet-payout"></div>
     </div>
+  </div>
+
+  <!-- SUMMARY TAB -->
+  <div id="summary-tab" class="tab-content">
+    <div class="parlay-total">
+      <h2>8-Leg Parlay</h2>
+      <div class="count" id="total-picks-count">0</div>
+      <div class="label">Picks Submitted</div>
+    </div>
 
     <div id="summary-container" style="margin-top: 24px;"></div>
 
@@ -91,7 +99,7 @@
       <svg class="info-icon" viewBox="0 0 24 24" fill="none" stroke="#7edcbe" stroke-width="2">
         <circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/>
       </svg>
-      Click on each pick to mark it as a Win ✅ or Loss ❌. Your record updates automatically!
+      Click on each pick to mark it as a Win ✅, Loss ❌, or No Contest 🚫. Your record updates automatically!
     </div>
 
     <div id="overall-record" class="record-banner"></div>
