@@ -35,7 +35,7 @@ const PLACEHOLDERS = [
 // WEEK SYSTEM — Runs Tuesday to Monday (football schedule)
 // Season starts Tuesday Sep 8, 2026
 // ============================================================
-const SEASON_START = new Date(2026, 8, 8); // Sep 8, 2026 (Tuesday)
+const SEASON_START = new Date(2026, 8, 8);
 
 function getSeasonWeek() {
   const now = new Date();
@@ -75,7 +75,6 @@ function weekKeyToLabel(weekKey) {
     const opts = { month: 'short', day: 'numeric' };
     return `Week ${week} — ${startDate.toLocaleDateString('en-US', opts)} – ${endDate.toLocaleDateString('en-US', opts)}, ${year}`;
   }
-
   if (weekKey.includes('NFL')) {
     const parts = weekKey.split('-NFL-W');
     const year = parseInt(parts[0]);
@@ -84,7 +83,6 @@ function weekKeyToLabel(weekKey) {
     const opts = { month: 'short', day: 'numeric' };
     return `Week ${week} — ${startDate.toLocaleDateString('en-US', opts)} – ${endDate.toLocaleDateString('en-US', opts)}, ${year}`;
   }
-
   const parts = weekKey.split('-W');
   const year = parseInt(parts[0]);
   const week = parseInt(parts[1]);
@@ -95,6 +93,10 @@ function weekKeyToLabel(weekKey) {
   sunday.setDate(monday.getDate() + 6);
   const opts = { month: 'short', day: 'numeric' };
   return `Week of ${monday.toLocaleDateString('en-US', opts)} – ${sunday.toLocaleDateString('en-US', opts)}, ${year}`;
+}
+
+function parlayLabel(index) {
+  return String.fromCharCode(65 + index); // 0=A, 1=B, 2=C, etc.
 }
 
 // ============================================================
@@ -110,13 +112,57 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
 });
 
 // ============================================================
-// BUILD ENTRY FORM
+// CURRENT WEEK & PARLAY STATE
 // ============================================================
 const weekKey = getWeekKey();
 const weekRef = db.ref(`weeks/${weekKey}`);
+let currentParlayIndex = 0;
+let totalParlays = 1;
 
 document.getElementById('week-header').textContent = getWeekDateRange();
 
+// ============================================================
+// PARLAY NAVIGATION
+// ============================================================
+const parlayNav = document.getElementById('parlay-nav');
+const parlayLabelEl = document.getElementById('parlay-label');
+const prevParlayBtn = document.getElementById('prev-parlay');
+const nextParlayBtn = document.getElementById('next-parlay');
+const addParlayBtn = document.getElementById('add-parlay');
+
+function updateParlayNav() {
+  parlayLabelEl.textContent = `Parlay ${parlayLabel(currentParlayIndex)}`;
+  prevParlayBtn.disabled = currentParlayIndex === 0;
+  nextParlayBtn.disabled = currentParlayIndex >= totalParlays - 1;
+}
+
+prevParlayBtn.addEventListener('click', () => {
+  if (currentParlayIndex > 0) {
+    currentParlayIndex--;
+    updateParlayNav();
+    loadCurrentParlay();
+  }
+});
+
+nextParlayBtn.addEventListener('click', () => {
+  if (currentParlayIndex < totalParlays - 1) {
+    currentParlayIndex++;
+    updateParlayNav();
+    loadCurrentParlay();
+  }
+});
+
+addParlayBtn.addEventListener('click', () => {
+  currentParlayIndex = totalParlays;
+  totalParlays++;
+  weekRef.child('parlayCount').set(totalParlays);
+  updateParlayNav();
+  loadCurrentParlay();
+});
+
+// ============================================================
+// BUILD ENTRY FORM
+// ============================================================
 const playersContainer = document.getElementById('players-container');
 
 for (let p = 0; p < NUM_PLAYERS; p++) {
@@ -164,11 +210,15 @@ function debounceSave(key, value, delay = 500) {
   }, delay);
 }
 
+function getParlayPath() {
+  return `parlays/${currentParlayIndex}`;
+}
+
 document.querySelectorAll('.pick-type').forEach(select => {
   select.addEventListener('change', () => {
     const p = select.dataset.player;
     const k = select.dataset.pick;
-    weekRef.child(`players/${p}/picks/${k}/type`).set(select.value);
+    weekRef.child(`${getParlayPath()}/players/${p}/picks/${k}/type`).set(select.value);
   });
 });
 
@@ -176,23 +226,89 @@ document.querySelectorAll('.pick-input').forEach(input => {
   input.addEventListener('input', () => {
     const p = input.dataset.player;
     const k = input.dataset.pick;
-    debounceSave(`players/${p}/picks/${k}/text`, input.value);
+    debounceSave(`${getParlayPath()}/players/${p}/picks/${k}/text`, input.value);
   });
 });
 
 document.querySelectorAll('.lock-check').forEach(cb => {
   cb.addEventListener('change', () => {
     const p = cb.dataset.player;
-    weekRef.child(`players/${p}/locked`).set(cb.checked);
+    weekRef.child(`${getParlayPath()}/players/${p}/locked`).set(cb.checked);
   });
 });
 
 // ============================================================
-// REAL-TIME LISTENER — Current Week (Entry + Summary)
+// LOAD CURRENT PARLAY DATA INTO FORM
+// ============================================================
+function loadCurrentParlay() {
+  weekRef.child(getParlayPath()).once('value', (snapshot) => {
+    const data = snapshot.val() || {};
+    const players = data.players || {};
+
+    let totalFilled = 0;
+
+    for (let p = 0; p < NUM_PLAYERS; p++) {
+      const pData = players[p] || {};
+      const section = document.getElementById(`player-section-${p}`);
+
+      const lockCb = section.querySelector('.lock-check');
+      lockCb.checked = pData.locked || false;
+      section.classList.toggle('locked', pData.locked || false);
+
+      const picks = pData.picks || {};
+      for (let k = 0; k < NUM_PICKS; k++) {
+        const pickData = picks[k] || {};
+        const typeSelect = section.querySelector(`.pick-type[data-pick="${k}"]`);
+        const textInput = section.querySelector(`.pick-input[data-pick="${k}"]`);
+
+        typeSelect.value = pickData.type || 'Game Line';
+        textInput.value = pickData.text || '';
+
+        if (pickData.text && pickData.text.trim() !== '') {
+          totalFilled++;
+        }
+      }
+    }
+
+    document.getElementById('total-picks-count').textContent = totalFilled;
+
+    // Load bet slip for this parlay
+    const betSlip = data.betSlip || {};
+    betOddsInput.value = betSlip.odds || '';
+    betAmountInput.value = betSlip.betAmount || '';
+    winAmountInput.value = betSlip.winAmount || '';
+    updatePayout();
+  });
+}
+
+// ============================================================
+// REAL-TIME LISTENER — Current Week
 // ============================================================
 weekRef.on('value', (snapshot) => {
   const data = snapshot.val() || {};
-  const players = data.players || {};
+
+  // Update parlay count
+  totalParlays = data.parlayCount || 1;
+
+  // Handle legacy data (pre-parlay system)
+  if (data.players && !data.parlays) {
+    // Migrate old format: move players & betSlip into parlays/0
+    const migrationData = {
+      players: data.players,
+      betSlip: data.betSlip || null
+    };
+    weekRef.child('parlays/0').set(migrationData);
+    weekRef.child('players').remove();
+    if (data.betSlip) weekRef.child('betSlip').remove();
+    if (!data.parlayCount) weekRef.child('parlayCount').set(1);
+    return; // Will re-trigger on value
+  }
+
+  updateParlayNav();
+
+  // Load current parlay into form
+  const parlayData = (data.parlays && data.parlays[currentParlayIndex]) || {};
+  const players = parlayData.players || {};
 
   let totalFilled = 0;
 
@@ -224,55 +340,97 @@ weekRef.on('value', (snapshot) => {
   }
 
   document.getElementById('total-picks-count').textContent = totalFilled;
-  buildSummary(players);
+  buildSummary(data);
+
+  // Load bet slip for current parlay
+  const betSlip = parlayData.betSlip || {};
+  if (document.activeElement !== betOddsInput) betOddsInput.value = betSlip.odds || '';
+  if (document.activeElement !== betAmountInput) betAmountInput.value = betSlip.betAmount || '';
+  if (document.activeElement !== winAmountInput) winAmountInput.value = betSlip.winAmount || '';
+  updatePayout();
 });
 
 // ============================================================
 // BUILD SUMMARY VIEW
 // ============================================================
-function buildSummary(players) {
+function buildSummary(weekData) {
   const container = document.getElementById('summary-container');
   container.innerHTML = '';
 
-  for (let p = 0; p < NUM_PLAYERS; p++) {
-    const pData = players[p] || {};
-    const picks = pData.picks || {};
-    const name = PLAYER_NAMES[p];
-    const locked = pData.locked || false;
+  const parlays = weekData.parlays || {};
+  const parlayKeys = Object.keys(parlays).sort();
 
-    let rowsHTML = '';
-    for (let k = 0; k < NUM_PICKS; k++) {
-      const pick = picks[k] || {};
-      const type = pick.type || 'Game Line';
-      const text = pick.text || '—';
-      const badgeClass = 'badge-' + type.toLowerCase().replace(/\//g, '-').replace(/\s+/g, '-');
+  parlayKeys.forEach(pi => {
+    const parlayData = parlays[pi] || {};
+    const players = parlayData.players || {};
+    const betSlip = parlayData.betSlip || {};
+    const pIndex = parseInt(pi);
 
-      rowsHTML += `
-        <tr>
-          <td>${k + 1}</td>
-          <td><span class="badge ${badgeClass}">${type}</span></td>
-          <td>${text}</td>
-        </tr>`;
+    const parlaySection = document.createElement('div');
+    parlaySection.className = 'summary-parlay-section';
+
+    // Parlay header
+    let parlayHeaderHTML = '';
+    if (parlayKeys.length > 1) {
+      parlayHeaderHTML = `<h3 class="summary-parlay-title">🎯 Parlay ${parlayLabel(pIndex)}</h3>`;
     }
 
-    const statusHTML = locked
-      ? '<span class="status-locked">✅ Locked In</span>'
-      : '<span class="status-pending">⏳ Pending</span>';
+    // Bet slip summary
+    let betSlipHTML = '';
+    if (betSlip.odds || betSlip.betAmount || betSlip.winAmount) {
+      const odds = betSlip.odds ? `+${betSlip.odds}` : '—';
+      const betAmt = betSlip.betAmount ? `$${parseFloat(betSlip.betAmount).toFixed(2)}` : '—';
+      const winAmt = betSlip.winAmount ? `$${parseFloat(betSlip.winAmount).toFixed(2)}` : '—';
+      betSlipHTML = `
+        <div class="summary-bet-slip">
+          <span>Odds: <strong>${odds}</strong></span>
+          <span>Wager: <strong>${betAmt}</strong></span>
+          <span>To Win: <strong>${winAmt}</strong></span>
+        </div>`;
+    }
 
-    const card = document.createElement('div');
-    card.className = 'summary-card';
-    card.innerHTML = `
-      <h3>
-        <span class="player-avatar ${PLAYER_COLORS[p]}" style="width:28px;height:28px;font-size:12px;display:inline-flex;align-items:center;justify-content:center;border-radius:50%;color:#fff;">${p + 1}</span>
-        ${name} ${statusHTML}
-      </h3>
-      <table class="summary-table">
-        <thead><tr><th>#</th><th>Type</th><th>Pick</th></tr></thead>
-        <tbody>${rowsHTML}</tbody>
-      </table>`;
+    let cardsHTML = '';
+    for (let p = 0; p < NUM_PLAYERS; p++) {
+      const pData = players[p] || {};
+      const picks = pData.picks || {};
+      const name = PLAYER_NAMES[p];
+      const locked = pData.locked || false;
 
-    container.appendChild(card);
-  }
+      let rowsHTML = '';
+      for (let k = 0; k < NUM_PICKS; k++) {
+        const pick = picks[k] || {};
+        const type = pick.type || 'Game Line';
+        const text = pick.text || '—';
+        const badgeClass = 'badge-' + type.toLowerCase().replace(/\//g, '-').replace(/\s+/g, '-');
+
+        rowsHTML += `
+          <tr>
+            <td>${k + 1}</td>
+            <td><span class="badge ${badgeClass}">${type}</span></td>
+            <td>${text}</td>
+          </tr>`;
+      }
+
+      const statusHTML = locked
+        ? '<span class="status-locked">✅ Locked In</span>'
+        : '<span class="status-pending">⏳ Pending</span>';
+
+      cardsHTML += `
+        <div class="summary-card">
+          <h3>
+            <span class="player-avatar ${PLAYER_COLORS[p]}" style="width:28px;height:28px;font-size:12px;display:inline-flex;align-items:center;justify-content:center;border-radius:50%;color:#fff;">${p + 1}</span>
+            ${name} ${statusHTML}
+          </h3>
+          <table class="summary-table">
+            <thead><tr><th>#</th><th>Type</th><th>Pick</th></tr></thead>
+            <tbody>${rowsHTML}</tbody>
+          </table>
+        </div>`;
+    }
+
+    parlaySection.innerHTML = `${parlayHeaderHTML}${betSlipHTML}${cardsHTML}`;
+    container.appendChild(parlaySection);
+  });
 }
 
 // ============================================================
@@ -305,7 +463,7 @@ function updatePayout() {
 }
 
 function saveBetSlip() {
-  weekRef.child('betSlip').set({
+  weekRef.child(`${getParlayPath()}/betSlip`).set({
     odds: betOddsInput.value || '',
     betAmount: betAmountInput.value || '',
     winAmount: winAmountInput.value || ''
@@ -315,14 +473,6 @@ function saveBetSlip() {
 betOddsInput.addEventListener('input', () => { updatePayout(); saveBetSlip(); });
 betAmountInput.addEventListener('input', () => { updatePayout(); saveBetSlip(); });
 winAmountInput.addEventListener('input', () => { updatePayout(); saveBetSlip(); });
-
-weekRef.child('betSlip').on('value', (snapshot) => {
-  const data = snapshot.val() || {};
-  if (document.activeElement !== betOddsInput) betOddsInput.value = data.odds || '';
-  if (document.activeElement !== betAmountInput) betAmountInput.value = data.betAmount || '';
-  if (document.activeElement !== winAmountInput) winAmountInput.value = data.winAmount || '';
-  updatePayout();
-});
 
 // ============================================================
 // HISTORY TAB — Load All Weeks
@@ -354,119 +504,178 @@ allWeeksRef.on('value', (snapshot) => {
   let totalWins = 0;
   let totalLosses = 0;
   let totalPending = 0;
+  let totalNC = 0;
 
   const playerStats = {};
   for (let p = 0; p < NUM_PLAYERS; p++) {
-    playerStats[p] = { wins: 0, losses: 0, pending: 0 };
+    playerStats[p] = { wins: 0, losses: 0, pending: 0, nc: 0 };
   }
 
   weekKeys.forEach(wk => {
     const weekData = allWeeks[wk];
-    const players = weekData.players || {};
-    const results = weekData.results || {};
-    const betSlip = weekData.betSlip || {};
+
+    // Determine parlays — support both old and new format
+    let parlaysMap = {};
+    if (weekData.parlays) {
+      parlaysMap = weekData.parlays;
+    } else if (weekData.players) {
+      // Legacy format — treat as single parlay
+      parlaysMap = { 0: { players: weekData.players, betSlip: weekData.betSlip || {} } };
+    }
+
+    const parlayIndexes = Object.keys(parlaysMap).sort();
+    if (parlayIndexes.length === 0) return;
 
     const weekDiv = document.createElement('div');
     weekDiv.className = 'history-week';
 
-    let rowsHTML = '';
     let weekWins = 0;
     let weekLosses = 0;
     let weekPending = 0;
+    let weekNC = 0;
     let hasPicks = false;
+    let parlaysHTML = '';
 
-    const playerKeys = Object.keys(players);
-    for (let i = 0; i < playerKeys.length; i++) {
-      const p = playerKeys[i];
-      const pData = players[p] || {};
-      const picks = pData.picks || {};
-      const playerIndex = parseInt(p);
-      const playerName = PLAYER_NAMES[playerIndex] || `Player ${playerIndex + 1}`;
+    parlayIndexes.forEach(pi => {
+      const parlayData = parlaysMap[pi] || {};
+      const players = parlayData.players || {};
+      const results = parlayData.results || weekData.results || {};
+      const betSlip = parlayData.betSlip || {};
+      const pIdx = parseInt(pi);
 
-      if (!playerStats[playerIndex]) {
-        playerStats[playerIndex] = { wins: 0, losses: 0, pending: 0 };
-      }
+      let rowsHTML = '';
+      let parlayWins = 0;
+      let parlayLosses = 0;
+      let parlayPending = 0;
+      let parlayNC = 0;
+      let parlayHasPicks = false;
 
-      const pickKeys = Object.keys(picks);
-      for (let j = 0; j < pickKeys.length; j++) {
-        const k = pickKeys[j];
-        const pick = picks[k] || {};
-        if (!pick.text || pick.text.trim() === '') continue;
+      const playerKeys = Object.keys(players);
+      for (let i = 0; i < playerKeys.length; i++) {
+        const p = playerKeys[i];
+        const pData = players[p] || {};
+        const picks = pData.picks || {};
+        const playerIndex = parseInt(p);
+        const playerName = PLAYER_NAMES[playerIndex] || `Player ${playerIndex + 1}`;
 
-        hasPicks = true;
-        const resultKey = `p${p}_k${k}`;
-        const result = results[resultKey] || 'pending';
-        const type = pick.type || 'Game Line';
-        const badgeClass = 'badge-' + type.toLowerCase().replace(/\//g, '-').replace(/\s+/g, '-');
-
-        if (result === 'win') {
-          weekWins++; totalWins++;
-          playerStats[playerIndex].wins++;
-        } else if (result === 'loss') {
-          weekLosses++; totalLosses++;
-          playerStats[playerIndex].losses++;
-        } else {
-          weekPending++; totalPending++;
-          playerStats[playerIndex].pending++;
+        if (!playerStats[playerIndex]) {
+          playerStats[playerIndex] = { wins: 0, losses: 0, pending: 0, nc: 0 };
         }
 
-        const winClass = result === 'win' ? ' win' : '';
-        const lossClass = result === 'loss' ? ' loss' : '';
+        const pickKeys = Object.keys(picks);
+        for (let j = 0; j < pickKeys.length; j++) {
+          const k = pickKeys[j];
+          const pick = picks[k] || {};
+          if (!pick.text || pick.text.trim() === '') continue;
 
-        rowsHTML += `
-          <tr>
-            <td><strong>${playerName}</strong></td>
-            <td><span class="badge ${badgeClass}">${type}</span></td>
-            <td>${pick.text}</td>
-            <td>
-              <button class="result-btn${winClass}" data-week="${wk}" data-key="${resultKey}" data-action="win">✅ W</button>
-              <button class="result-btn${lossClass}" data-week="${wk}" data-key="${resultKey}" data-action="loss">❌ L</button>
-            </td>
-          </tr>`;
+          parlayHasPicks = true;
+          hasPicks = true;
+          const resultKey = `p${p}_k${k}`;
+          const result = results[resultKey] || 'pending';
+          const type = pick.type || 'Game Line';
+          const badgeClass = 'badge-' + type.toLowerCase().replace(/\//g, '-').replace(/\s+/g, '-');
+
+          if (result === 'win') {
+            parlayWins++; weekWins++; totalWins++;
+            playerStats[playerIndex].wins++;
+          } else if (result === 'loss') {
+            parlayLosses++; weekLosses++; totalLosses++;
+            playerStats[playerIndex].losses++;
+          } else if (result === 'nc') {
+            parlayNC++; weekNC++; totalNC++;
+            playerStats[playerIndex].nc++;
+          } else {
+            parlayPending++; weekPending++; totalPending++;
+            playerStats[playerIndex].pending++;
+          }
+
+          const winClass = result === 'win' ? ' win' : '';
+          const lossClass = result === 'loss' ? ' loss' : '';
+          const ncClass = result === 'nc' ? ' nc' : '';
+
+          rowsHTML += `
+            <tr>
+              <td><strong>${playerName}</strong></td>
+              <td><span class="badge ${badgeClass}">${type}</span></td>
+              <td>${pick.text}</td>
+              <td class="result-cell">
+                <button class="result-btn${winClass}" data-week="${wk}" data-parlay="${pi}" data-key="${resultKey}" data-action="win">✅ W</button>
+                <button class="result-btn${lossClass}" data-week="${wk}" data-parlay="${pi}" data-key="${resultKey}" data-action="loss">❌ L</button>
+                <button class="result-btn${ncClass}" data-week="${wk}" data-parlay="${pi}" data-key="${resultKey}" data-action="nc">🚫 NC</button>
+              </td>
+            </tr>`;
+        }
       }
-    }
+
+      if (!parlayHasPicks) return;
+
+      // Bet slip for this parlay
+      let betSlipHTML = '';
+      if (betSlip.odds || betSlip.betAmount || betSlip.winAmount) {
+        const odds = betSlip.odds ? `+${betSlip.odds}` : '—';
+        const betAmt = betSlip.betAmount ? `$${parseFloat(betSlip.betAmount).toFixed(2)}` : '—';
+        const winAmt = betSlip.winAmount ? `$${parseFloat(betSlip.winAmount).toFixed(2)}` : '—';
+        const totalPayout = (betSlip.betAmount && betSlip.winAmount)
+          ? `$${(parseFloat(betSlip.betAmount) + parseFloat(betSlip.winAmount)).toFixed(2)}`
+          : '—';
+
+        betSlipHTML = `
+          <div class="history-bet-slip">
+            <div class="bet-slip-item">
+              <span class="bet-slip-label">Odds</span>
+              <span class="bet-slip-value">${odds}</span>
+            </div>
+            <div class="bet-slip-item">
+              <span class="bet-slip-label">Wager</span>
+              <span class="bet-slip-value">${betAmt}</span>
+            </div>
+            <div class="bet-slip-item">
+              <span class="bet-slip-label">To Win</span>
+              <span class="bet-slip-value bet-slip-win">${winAmt}</span>
+            </div>
+            <div class="bet-slip-item">
+              <span class="bet-slip-label">Payout</span>
+              <span class="bet-slip-value bet-slip-payout">${totalPayout}</span>
+            </div>
+          </div>`;
+      }
+
+      // Parlay result badge
+      let parlayResultHTML = '';
+      if (parlayPending > 0) {
+        parlayResultHTML = `<span class="history-week-result result-pending">⏳ ${parlayWins}W - ${parlayLosses}L${parlayNC > 0 ? ` - ${parlayNC}NC` : ''} - ${parlayPending} pending</span>`;
+      } else if (parlayLosses === 0 && parlayWins > 0) {
+        parlayResultHTML = `<span class="history-week-result result-win">🎉 PERFECT ${parlayWins}-${parlayLosses}${parlayNC > 0 ? ` - ${parlayNC}NC` : ''}</span>`;
+      } else {
+        parlayResultHTML = `<span class="history-week-result ${parlayWins > parlayLosses ? 'result-win' : 'result-loss'}">${parlayWins}W - ${parlayLosses}L${parlayNC > 0 ? ` - ${parlayNC}NC` : ''}</span>`;
+      }
+
+      // Show parlay label if multiple parlays
+      const parlayTitle = parlayIndexes.length > 1 ? `Parlay ${parlayLabel(pIdx)} — ` : '';
+
+      parlaysHTML += `
+        <div class="history-parlay-block">
+          <div class="history-parlay-header">
+            <h4>🎯 ${parlayTitle}${parlayResultHTML}</h4>
+          </div>
+          ${betSlipHTML}
+          <table class="history-table">
+            <thead><tr><th>Player</th><th>Type</th><th>Pick</th><th>Result</th></tr></thead>
+            <tbody>${rowsHTML}</tbody>
+          </table>
+        </div>`;
+    });
 
     if (!hasPicks) return;
 
-    // Week result badge
+    // Week-level result
     let weekResultHTML = '';
     if (weekPending > 0) {
-      weekResultHTML = `<span class="history-week-result result-pending">⏳ ${weekWins}W - ${weekLosses}L - ${weekPending} pending</span>`;
+      weekResultHTML = `<span class="history-week-result result-pending">⏳ ${weekWins}W - ${weekLosses}L${weekNC > 0 ? ` - ${weekNC}NC` : ''} - ${weekPending} pending</span>`;
     } else if (weekLosses === 0 && weekWins > 0) {
-      weekResultHTML = `<span class="history-week-result result-win">🎉 PERFECT ${weekWins}-${weekLosses}</span>`;
+      weekResultHTML = `<span class="history-week-result result-win">🎉 PERFECT ${weekWins}-${weekLosses}${weekNC > 0 ? ` - ${weekNC}NC` : ''}</span>`;
     } else {
-      weekResultHTML = `<span class="history-week-result ${weekWins > weekLosses ? 'result-win' : 'result-loss'}">${weekWins}W - ${weekLosses}L</span>`;
-    }
-
-    // Bet slip info for this week
-    let betSlipHTML = '';
-    if (betSlip.odds || betSlip.betAmount || betSlip.winAmount) {
-      const odds = betSlip.odds ? `+${betSlip.odds}` : '—';
-      const betAmt = betSlip.betAmount ? `$${parseFloat(betSlip.betAmount).toFixed(2)}` : '—';
-      const winAmt = betSlip.winAmount ? `$${parseFloat(betSlip.winAmount).toFixed(2)}` : '—';
-      const totalPayout = (betSlip.betAmount && betSlip.winAmount)
-        ? `$${(parseFloat(betSlip.betAmount) + parseFloat(betSlip.winAmount)).toFixed(2)}`
-        : '—';
-
-      betSlipHTML = `
-        <div class="history-bet-slip">
-          <div class="bet-slip-item">
-            <span class="bet-slip-label">Odds</span>
-            <span class="bet-slip-value">${odds}</span>
-          </div>
-          <div class="bet-slip-item">
-            <span class="bet-slip-label">Wager</span>
-            <span class="bet-slip-value">${betAmt}</span>
-          </div>
-          <div class="bet-slip-item">
-            <span class="bet-slip-label">To Win</span>
-            <span class="bet-slip-value bet-slip-win">${winAmt}</span>
-          </div>
-          <div class="bet-slip-item">
-            <span class="bet-slip-label">Payout</span>
-            <span class="bet-slip-value bet-slip-payout">${totalPayout}</span>
-          </div>
-        </div>`;
+      weekResultHTML = `<span class="history-week-result ${weekWins > weekLosses ? 'result-win' : 'result-loss'}">${weekWins}W - ${weekLosses}L${weekNC > 0 ? ` - ${weekNC}NC` : ''}</span>`;
     }
 
     weekDiv.innerHTML = `
@@ -474,11 +683,7 @@ allWeeksRef.on('value', (snapshot) => {
         <h3>📅 ${weekKeyToLabel(wk)}</h3>
         ${weekResultHTML}
       </div>
-      ${betSlipHTML}
-      <table class="history-table">
-        <thead><tr><th>Player</th><th>Type</th><th>Pick</th><th>Result</th></tr></thead>
-        <tbody>${rowsHTML}</tbody>
-      </table>`;
+      ${parlaysHTML}`;
 
     historyContainer.appendChild(weekDiv);
   });
@@ -497,6 +702,10 @@ allWeeksRef.on('value', (snapshot) => {
       <div class="record-stat stat-losses">
         <div class="num">${totalLosses}</div>
         <div class="lbl">Losses</div>
+      </div>
+      <div class="record-stat stat-nc">
+        <div class="num">${totalNC}</div>
+        <div class="lbl">No Contest</div>
       </div>
       <div class="record-stat stat-pending">
         <div class="num">${totalPending}</div>
@@ -526,6 +735,7 @@ allWeeksRef.on('value', (snapshot) => {
           <span class="pr-stat pr-wins">${stats.wins}W</span>
           <span class="pr-divider">-</span>
           <span class="pr-stat pr-losses">${stats.losses}L</span>
+          ${stats.nc > 0 ? `<span class="pr-divider">-</span><span class="pr-stat pr-nc">${stats.nc}NC</span>` : ''}
           ${stats.pending > 0 ? `<span class="pr-divider">-</span><span class="pr-stat pr-pending">${stats.pending}P</span>` : ''}
         </div>
         <div class="player-record-bar">
@@ -543,10 +753,18 @@ allWeeksRef.on('value', (snapshot) => {
   document.querySelectorAll('.result-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       const week = btn.dataset.week;
+      const parlayIdx = btn.dataset.parlay;
       const key = btn.dataset.key;
       const action = btn.dataset.action;
 
-      const resultRef = db.ref(`weeks/${week}/results/${key}`);
+      // Determine the correct results path
+      const weekSnap = allWeeks[week];
+      let resultRef;
+      if (weekSnap && weekSnap.parlays) {
+        resultRef = db.ref(`weeks/${week}/parlays/${parlayIdx}/results/${key}`);
+      } else {
+        resultRef = db.ref(`weeks/${week}/results/${key}`);
+      }
 
       resultRef.once('value', (snap) => {
         const current = snap.val();
