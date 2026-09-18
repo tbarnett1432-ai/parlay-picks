@@ -96,7 +96,7 @@ function weekKeyToLabel(weekKey) {
 }
 
 function parlayLabel(index) {
-  return String.fromCharCode(65 + index); // 0=A, 1=B, 2=C, etc.
+  return String.fromCharCode(65 + index);
 }
 
 // ============================================================
@@ -272,7 +272,6 @@ function loadCurrentParlay() {
 
     document.getElementById('total-picks-count').textContent = totalFilled;
 
-    // Load bet slip for this parlay
     const betSlip = data.betSlip || {};
     betOddsInput.value = betSlip.odds || '';
     betAmountInput.value = betSlip.betAmount || '';
@@ -287,26 +286,25 @@ function loadCurrentParlay() {
 weekRef.on('value', (snapshot) => {
   const data = snapshot.val() || {};
 
-  // Update parlay count
   totalParlays = data.parlayCount || 1;
 
   // Handle legacy data (pre-parlay system)
   if (data.players && !data.parlays) {
-    // Migrate old format: move players & betSlip into parlays/0
     const migrationData = {
-      players: data.players,
-      betSlip: data.betSlip || null
+      players: data.players
     };
+    if (data.betSlip) migrationData.betSlip = data.betSlip;
+    if (data.results) migrationData.results = data.results;
     weekRef.child('parlays/0').set(migrationData);
     weekRef.child('players').remove();
     if (data.betSlip) weekRef.child('betSlip').remove();
+    if (data.results) weekRef.child('results').remove();
     if (!data.parlayCount) weekRef.child('parlayCount').set(1);
-    return; // Will re-trigger on value
+    return;
   }
 
   updateParlayNav();
 
-  // Load current parlay into form
   const parlayData = (data.parlays && data.parlays[currentParlayIndex]) || {};
   const players = parlayData.players || {};
 
@@ -342,7 +340,6 @@ weekRef.on('value', (snapshot) => {
   document.getElementById('total-picks-count').textContent = totalFilled;
   buildSummary(data);
 
-  // Load bet slip for current parlay
   const betSlip = parlayData.betSlip || {};
   if (document.activeElement !== betOddsInput) betOddsInput.value = betSlip.odds || '';
   if (document.activeElement !== betAmountInput) betAmountInput.value = betSlip.betAmount || '';
@@ -369,13 +366,11 @@ function buildSummary(weekData) {
     const parlaySection = document.createElement('div');
     parlaySection.className = 'summary-parlay-section';
 
-    // Parlay header
     let parlayHeaderHTML = '';
     if (parlayKeys.length > 1) {
       parlayHeaderHTML = `<h3 class="summary-parlay-title">🎯 Parlay ${parlayLabel(pIndex)}</h3>`;
     }
 
-    // Bet slip summary
     let betSlipHTML = '';
     if (betSlip.odds || betSlip.betAmount || betSlip.winAmount) {
       const odds = betSlip.odds ? `+${betSlip.odds}` : '—';
@@ -519,8 +514,7 @@ allWeeksRef.on('value', (snapshot) => {
     if (weekData.parlays) {
       parlaysMap = weekData.parlays;
     } else if (weekData.players) {
-      // Legacy format — treat as single parlay
-      parlaysMap = { 0: { players: weekData.players, betSlip: weekData.betSlip || {} } };
+      parlaysMap = { 0: { players: weekData.players, betSlip: weekData.betSlip || {}, results: weekData.results || {} } };
     }
 
     const parlayIndexes = Object.keys(parlaysMap).sort();
@@ -539,7 +533,7 @@ allWeeksRef.on('value', (snapshot) => {
     parlayIndexes.forEach(pi => {
       const parlayData = parlaysMap[pi] || {};
       const players = parlayData.players || {};
-      const results = parlayData.results || weekData.results || {};
+      const results = parlayData.results || {};
       const betSlip = parlayData.betSlip || {};
       const pIdx = parseInt(pi);
 
@@ -593,15 +587,18 @@ allWeeksRef.on('value', (snapshot) => {
           const lossClass = result === 'loss' ? ' loss' : '';
           const ncClass = result === 'nc' ? ' nc' : '';
 
+          // Always use parlays path for result saving
+          const resultPath = `weeks/${wk}/parlays/${pi}/results/${resultKey}`;
+
           rowsHTML += `
             <tr>
               <td><strong>${playerName}</strong></td>
               <td><span class="badge ${badgeClass}">${type}</span></td>
               <td>${pick.text}</td>
               <td class="result-cell">
-                <button class="result-btn${winClass}" data-week="${wk}" data-parlay="${pi}" data-key="${resultKey}" data-action="win">✅ W</button>
-                <button class="result-btn${lossClass}" data-week="${wk}" data-parlay="${pi}" data-key="${resultKey}" data-action="loss">❌ L</button>
-                <button class="result-btn${ncClass}" data-week="${wk}" data-parlay="${pi}" data-key="${resultKey}" data-action="nc">🚫 NC</button>
+                <button class="result-btn${winClass}" data-result-path="${resultPath}" data-action="win">✅ W</button>
+                <button class="result-btn${lossClass}" data-result-path="${resultPath}" data-action="loss">❌ L</button>
+                <button class="result-btn${ncClass}" data-result-path="${resultPath}" data-action="nc">🚫 NC</button>
               </td>
             </tr>`;
         }
@@ -609,13 +606,12 @@ allWeeksRef.on('value', (snapshot) => {
 
       if (!parlayHasPicks) return;
 
-      // Bet slip for this parlay
       let betSlipHTML = '';
       if (betSlip.odds || betSlip.betAmount || betSlip.winAmount) {
         const odds = betSlip.odds ? `+${betSlip.odds}` : '—';
         const betAmt = betSlip.betAmount ? `$${parseFloat(betSlip.betAmount).toFixed(2)}` : '—';
         const winAmt = betSlip.winAmount ? `$${parseFloat(betSlip.winAmount).toFixed(2)}` : '—';
-        const totalPayout = (betSlip.betAmount && betSlip.winAmount)
+        const tp = (betSlip.betAmount && betSlip.winAmount)
           ? `$${(parseFloat(betSlip.betAmount) + parseFloat(betSlip.winAmount)).toFixed(2)}`
           : '—';
 
@@ -635,12 +631,11 @@ allWeeksRef.on('value', (snapshot) => {
             </div>
             <div class="bet-slip-item">
               <span class="bet-slip-label">Payout</span>
-              <span class="bet-slip-value bet-slip-payout">${totalPayout}</span>
+              <span class="bet-slip-value bet-slip-payout">${tp}</span>
             </div>
           </div>`;
       }
 
-      // Parlay result badge
       let parlayResultHTML = '';
       if (parlayPending > 0) {
         parlayResultHTML = `<span class="history-week-result result-pending">⏳ ${parlayWins}W - ${parlayLosses}L${parlayNC > 0 ? ` - ${parlayNC}NC` : ''} - ${parlayPending} pending</span>`;
@@ -650,7 +645,6 @@ allWeeksRef.on('value', (snapshot) => {
         parlayResultHTML = `<span class="history-week-result ${parlayWins > parlayLosses ? 'result-win' : 'result-loss'}">${parlayWins}W - ${parlayLosses}L${parlayNC > 0 ? ` - ${parlayNC}NC` : ''}</span>`;
       }
 
-      // Show parlay label if multiple parlays
       const parlayTitle = parlayIndexes.length > 1 ? `Parlay ${parlayLabel(pIdx)} — ` : '';
 
       parlaysHTML += `
@@ -668,7 +662,6 @@ allWeeksRef.on('value', (snapshot) => {
 
     if (!hasPicks) return;
 
-    // Week-level result
     let weekResultHTML = '';
     if (weekPending > 0) {
       weekResultHTML = `<span class="history-week-result result-pending">⏳ ${weekWins}W - ${weekLosses}L${weekNC > 0 ? ` - ${weekNC}NC` : ''} - ${weekPending} pending</span>`;
@@ -749,22 +742,12 @@ allWeeksRef.on('value', (snapshot) => {
     <h2>👤 Individual Records</h2>
     <div class="player-records-grid">${playerCardsHTML}</div>`;
 
-  // Attach click handlers to result buttons
+  // Attach click handlers to result buttons — using direct Firebase path
   document.querySelectorAll('.result-btn').forEach(btn => {
     btn.addEventListener('click', () => {
-      const week = btn.dataset.week;
-      const parlayIdx = btn.dataset.parlay;
-      const key = btn.dataset.key;
+      const resultPath = btn.dataset.resultPath;
       const action = btn.dataset.action;
-
-      // Determine the correct results path
-      const weekSnap = allWeeks[week];
-      let resultRef;
-      if (weekSnap && weekSnap.parlays) {
-        resultRef = db.ref(`weeks/${week}/parlays/${parlayIdx}/results/${key}`);
-      } else {
-        resultRef = db.ref(`weeks/${week}/results/${key}`);
-      }
+      const resultRef = db.ref(resultPath);
 
       resultRef.once('value', (snap) => {
         const current = snap.val();
