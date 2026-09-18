@@ -28,10 +28,34 @@ h1 { text-align: center; font-size: 28px; color: #fff; margin-bottom: 4px; lette
 
 /* ===== WEEK HEADER ===== */
 .week-header {
-  text-align: center; margin-bottom: 24px; padding: 12px 20px;
+  text-align: center; margin-bottom: 16px; padding: 12px 20px;
   background: #1a2733; border-radius: 10px;
   color: #28a87d; font-weight: 700; font-size: 16px;
 }
+
+/* ===== PARLAY NAVIGATION ===== */
+.parlay-nav {
+  display: flex; align-items: center; justify-content: center; gap: 12px;
+  margin-bottom: 24px; padding: 10px 16px;
+  background: #1a2733; border-radius: 10px; border: 1px solid #243342;
+}
+.parlay-label {
+  font-size: 16px; font-weight: 700; color: #fff; min-width: 100px; text-align: center;
+}
+.parlay-nav-btn {
+  background: #243342; border: 1px solid #334155; border-radius: 6px;
+  color: #7a8a9e; padding: 6px 12px; cursor: pointer; font-size: 14px;
+  font-family: inherit; transition: all 0.15s ease;
+}
+.parlay-nav-btn:hover:not(:disabled) { background: #334155; color: #fff; }
+.parlay-nav-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+.add-parlay-btn {
+  background: #1e6f5c; border: 1px solid #28a87d; border-radius: 6px;
+  color: #fff; padding: 6px 14px; cursor: pointer; font-size: 13px;
+  font-weight: 600; font-family: inherit; transition: all 0.15s ease;
+  margin-left: 8px;
+}
+.add-parlay-btn:hover { background: #28a87d; }
 
 /* ===== INFO BAR ===== */
 .info-bar {
@@ -105,6 +129,18 @@ h1 { text-align: center; font-size: 28px; color: #fff; margin-bottom: 4px; lette
 .parlay-total .count { font-size: 42px; font-weight: 800; color: #5eead4; font-family: monospace; }
 .parlay-total .label { color: #7edcbe; font-size: 13px; margin-top: 4px; }
 
+.summary-parlay-section { margin-bottom: 24px; }
+.summary-parlay-title {
+  font-size: 16px; color: #28a87d; margin-bottom: 12px; text-align: center;
+  padding: 8px; background: #162230; border-radius: 8px;
+}
+.summary-bet-slip {
+  display: flex; justify-content: center; gap: 20px; padding: 10px 16px;
+  background: #0f1923; border-radius: 8px; margin-bottom: 12px;
+  font-size: 13px; color: #7a8a9e;
+}
+.summary-bet-slip strong { color: #5eead4; }
+
 /* ===== BET CALCULATOR ===== */
 .bet-calculator {
   background: #1a2733; border-radius: 12px; padding: 20px; margin-top: 20px;
@@ -177,12 +213,13 @@ h1 { text-align: center; font-size: 28px; color: #fff; margin-bottom: 4px; lette
   border: 1px solid #243342;
 }
 .record-banner h2 { font-size: 18px; color: #fff; margin-bottom: 8px; }
-.record-stats { display: flex; justify-content: center; gap: 24px; margin-top: 10px; }
+.record-stats { display: flex; justify-content: center; gap: 24px; margin-top: 10px; flex-wrap: wrap; }
 .record-stat { text-align: center; }
 .record-stat .num { font-size: 28px; font-weight: 800; font-family: monospace; }
 .record-stat .lbl { font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: #7a8a9e; margin-top: 2px; }
 .stat-wins .num { color: #34d399; }
 .stat-losses .num { color: #f87171; }
+.stat-nc .num { color: #94a3b8; }
 .stat-pending .num { color: #fbbf24; }
 .stat-pct .num { color: #5eead4; }
 
@@ -216,6 +253,7 @@ h1 { text-align: center; font-size: 28px; color: #fff; margin-bottom: 4px; lette
 .pr-stat.pr-wins { color: #34d399; }
 .pr-stat.pr-losses { color: #f87171; }
 .pr-stat.pr-pending { color: #fbbf24; }
+.pr-stat.pr-nc { color: #94a3b8; }
 .pr-divider { color: #4a5a6e; }
 .player-record-bar {
   display: flex; height: 6px; border-radius: 3px; overflow: hidden;
@@ -241,6 +279,15 @@ h1 { text-align: center; font-size: 28px; color: #fff; margin-bottom: 4px; lette
 .bet-slip-win { color: #fbbf24; }
 .bet-slip-payout { color: #5eead4; }
 
+/* ===== HISTORY PARLAY BLOCKS ===== */
+.history-parlay-block {
+  margin-bottom: 16px; padding-top: 8px;
+}
+.history-parlay-header h4 {
+  font-size: 14px; color: #fff; margin-bottom: 10px;
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+}
+
 .history-week {
   background: #1a2733; border-radius: 12px; padding: 20px; margin-bottom: 16px;
   border: 1px solid #243342;
@@ -264,38 +311,13 @@ h1 { text-align: center; font-size: 28px; color: #fff; margin-bottom: 4px; lette
 }
 .history-table td { padding: 10px 12px; border-bottom: 1px solid #1e2d3d; color: #c8d6e5; }
 
+.result-cell { white-space: nowrap; }
+
 .result-btn {
-  padding: 4px 12px; border-radius: 6px; border: 1px solid #334155;
-  background: #0f1923; color: #7a8a9e; cursor: pointer; font-size: 12px;
+  padding: 4px 10px; border-radius: 6px; border: 1px solid #334155;
+  background: #0f1923; color: #7a8a9e; cursor: pointer; font-size: 11px;
   font-weight: 600; font-family: inherit; transition: all 0.15s ease;
-  min-width: 60px;
+  min-width: 50px;
 }
 .result-btn:hover { border-color: #7a8a9e; }
-.result-btn.win { background: #064e3b; color: #34d399; border-color: #34d399; }
-.result-btn.loss { background: #450a0a; color: #f87171; border-color: #f87171; }
-
-.no-history {
-  text-align: center; color: #7a8a9e; padding: 40px 20px; font-size: 14px;
-}
-
-/* ===== RESPONSIVE ===== */
-@media (max-width: 600px) {
-  .pick-row { flex-wrap: wrap; }
-  .pick-type { width: 100%; }
-  body { padding: 12px; }
-  .record-stats { gap: 16px; }
-  .record-stat .num { font-size: 22px; }
-  .tab-btn { padding: 8px 16px; font-size: 13px; }
-  .player-records-grid { grid-template-columns: 1fr; }
-  .bet-fields { grid-template-columns: 1fr; }
-  .history-bet-slip { flex-wrap: wrap; gap: 12px; }
-}
-
-/* ===== ANIMATIONS ===== */
-@media (prefers-reduced-motion: no-preference) {
-  @keyframes slideUp {
-    from { opacity: 0; transform: translateY(12px); }
-    to { opacity: 1; transform: none; }
-  }
-}
-
+.result-btn.win { background: #064e3b
