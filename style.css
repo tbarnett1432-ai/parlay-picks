@@ -86,9 +86,7 @@ h1 { text-align: center; font-size: 28px; color: #fff; margin-bottom: 4px; lette
 .avatar-3 { background: #ea580c; }
 .avatar-4 { background: #0891b2; }
 
-.player-name {
-  color: #fff; font-size: 18px; font-weight: 600;
-}
+.player-name { color: #fff; font-size: 18px; font-weight: 600; }
 
 /* ===== PICKS ===== */
 .picks-grid { display: flex; flex-direction: column; gap: 10px; }
@@ -224,28 +222,16 @@ h1 { text-align: center; font-size: 28px; color: #fff; margin-bottom: 4px; lette
 .stat-pct .num { color: #5eead4; }
 
 /* ===== INDIVIDUAL PLAYER RECORDS ===== */
-.player-records-section {
-  margin-bottom: 24px;
-}
-.player-records-section h2 {
-  font-size: 18px; color: #fff; margin-bottom: 14px; text-align: center;
-}
-.player-records-grid {
-  display: grid; grid-template-columns: 1fr 1fr; gap: 12px;
-}
+.player-records-section { margin-bottom: 24px; }
+.player-records-section h2 { font-size: 18px; color: #fff; margin-bottom: 14px; text-align: center; }
+.player-records-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 .player-record-card {
   background: #1a2733; border-radius: 10px; padding: 16px;
   border: 1px solid #243342;
 }
-.player-record-header {
-  display: flex; align-items: center; gap: 10px; margin-bottom: 10px;
-}
-.player-record-name {
-  color: #fff; font-size: 15px; font-weight: 600; flex: 1;
-}
-.player-record-pct {
-  font-size: 20px; font-weight: 800; font-family: monospace; color: #5eead4;
-}
+.player-record-header { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+.player-record-name { color: #fff; font-size: 15px; font-weight: 600; flex: 1; }
+.player-record-pct { font-size: 20px; font-weight: 800; font-family: monospace; color: #5eead4; }
 .player-record-stats {
   display: flex; align-items: center; gap: 6px; margin-bottom: 10px;
   font-size: 13px; font-weight: 600;
@@ -273,16 +259,12 @@ h1 { text-align: center; font-size: 28px; color: #fff; margin-bottom: 4px; lette
   display: block; font-size: 10px; text-transform: uppercase;
   letter-spacing: 0.05em; color: #7a8a9e; margin-bottom: 4px; font-weight: 600;
 }
-.bet-slip-value {
-  font-size: 15px; font-weight: 700; color: #e0e0e0; font-family: monospace;
-}
+.bet-slip-value { font-size: 15px; font-weight: 700; color: #e0e0e0; font-family: monospace; }
 .bet-slip-win { color: #fbbf24; }
 .bet-slip-payout { color: #5eead4; }
 
 /* ===== HISTORY PARLAY BLOCKS ===== */
-.history-parlay-block {
-  margin-bottom: 16px; padding-top: 8px;
-}
+.history-parlay-block { margin-bottom: 16px; padding-top: 8px; }
 .history-parlay-header h4 {
   font-size: 14px; color: #fff; margin-bottom: 10px;
   display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
@@ -317,7 +299,37 @@ h1 { text-align: center; font-size: 28px; color: #fff; margin-bottom: 4px; lette
   padding: 4px 10px; border-radius: 6px; border: 1px solid #334155;
   background: #0f1923; color: #7a8a9e; cursor: pointer; font-size: 11px;
   font-weight: 600; font-family: inherit; transition: all 0.15s ease;
-  min-width: 50px;
+  min-width: 50px; margin: 2px;
 }
 .result-btn:hover { border-color: #7a8a9e; }
-.result-btn.win { background: #064e3b
+.result-btn.win { background: #064e3b; color: #34d399; border-color: #34d399; }
+.result-btn.loss { background: #450a0a; color: #f87171; border-color: #f87171; }
+.result-btn.nc { background: #1e293b; color: #94a3b8; border-color: #94a3b8; }
+
+.no-history {
+  text-align: center; color: #7a8a9e; padding: 40px 20px; font-size: 14px;
+}
+
+/* ===== RESPONSIVE ===== */
+@media (max-width: 600px) {
+  .pick-row { flex-wrap: wrap; }
+  .pick-type { width: 100%; }
+  body { padding: 12px; }
+  .record-stats { gap: 16px; }
+  .record-stat .num { font-size: 22px; }
+  .tab-btn { padding: 8px 16px; font-size: 13px; }
+  .player-records-grid { grid-template-columns: 1fr; }
+  .bet-fields { grid-template-columns: 1fr; }
+  .history-bet-slip { flex-wrap: wrap; gap: 12px; }
+  .result-cell { white-space: normal; }
+  .parlay-nav { flex-wrap: wrap; gap: 8px; }
+}
+
+/* ===== ANIMATIONS ===== */
+@media (prefers-reduced-motion: no-preference) {
+  @keyframes slideUp {
+    from { opacity: 0; transform: translateY(12px); }
+    to { opacity: 1; transform: none; }
+  }
+}
+
